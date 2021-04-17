@@ -10,7 +10,6 @@ import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 
-
 open class DeployTask : DefaultTask() {
 
     @Input
@@ -84,9 +83,11 @@ open class DeployTask : DefaultTask() {
     }
 
     @SuppressWarnings("SpreadOperator")
-    private fun Project.deployForEnvironment(serviceName: String,
+    private fun Project.deployForEnvironment(
+        serviceName: String,
         environment: String,
-        attributes: Map<String, String>) {
+        attributes: Map<String, String>
+    ) {
         val appVersion = file(dockerVersionFile()).readText()
 
         val tag = "$registry/$serviceName:$appVersion"
@@ -112,9 +113,12 @@ open class DeployTask : DefaultTask() {
         file(deployedDockerVersionFile()).writeText(versionToDeploy)
     }
 
-    private fun Project.findVersionToDeploy(tag: String, remoteTag: String,
+    private fun Project.findVersionToDeploy(
+        tag: String,
+        remoteTag: String,
         remoteVersion: String?,
-        appVersion: String): String {
+        appVersion: String
+    ): String {
         return if (tagsHaveEqualLayers(tag, remoteTag) && remoteVersion != null) {
             logger.info("Local version has same layers, deploying existing version.")
             println("Deploying existing version: $appVersion")

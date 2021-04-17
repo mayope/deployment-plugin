@@ -27,7 +27,6 @@ enum class DockerLoginMethod {
             it.commandLine(listOf("docker", "login", host, "--username", username, "-p", password))
         }
         return "logged in"
-
     }
 
     fun Project.awsLogin(host: String): String {

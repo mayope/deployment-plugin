@@ -68,11 +68,10 @@ class DeployPlugin : Plugin<Project> {
             val registry =
                 deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
                     "You have to specify at least one DockerRegistryRoot," +
-                            " either in the deploy{} or in the deployDefault{} extension"
+                        " either in the deploy{} or in the deployDefault{} extension"
                 )
             val targetNamespaces = deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
             val prepareTask = deployExtension.prepareTask ?: defaultDeployExtension.defaultPrepareTask
-
 
             val stagePrepareBuildDocker = prepareTask ?: "prepareBuildDocker"
 
@@ -97,13 +96,14 @@ class DeployPlugin : Plugin<Project> {
             val attributes = deployExtension.attributes.plus(defaultDeployExtension.defaultAttributes)
             registerDeployTask(project, serviceName, targetNamespaces, attributes)
         }
-
     }
 
-    private fun registerDeployTask(project: Project,
+    private fun registerDeployTask(
+        project: Project,
         serviceName: String,
         targetNamespaces: List<String>,
-        attributes: Map<String, String>) {
+        attributes: Map<String, String>
+    ) {
         project.tasks.register("deploy${serviceName.capitalize()}")
 
         targetNamespaces.forEach { namespace ->
@@ -125,9 +125,11 @@ class DeployPlugin : Plugin<Project> {
         }
     }
 
-    private fun registerBuildDockerTask(project: Project,
+    private fun registerBuildDockerTask(
+        project: Project,
         serviceName: String,
-        stagePrepareBuildDocker: String) {
+        stagePrepareBuildDocker: String
+    ) {
         project.tasks.register(stageBuildDocker, DockerBuildTask::class.java) {
             it.serviceName = serviceName
             it.description = "Builds the dockerImage of $serviceName service."
@@ -140,9 +142,11 @@ class DeployPlugin : Plugin<Project> {
         }
     }
 
-    private fun registerPushDockerTask(project: Project,
+    private fun registerPushDockerTask(
+        project: Project,
         serviceName: String,
-        registry: String) {
+        registry: String
+    ) {
         project.tasks.register(stagePushBuildDocker, DockerPushTask::class.java) {
             it.dependsOn(stageBuildDocker, dockerLogin)
             it.description = "Pushes the dockerImage of $serviceName service."
@@ -152,8 +156,10 @@ class DeployPlugin : Plugin<Project> {
         }
     }
 
-    private fun registerLoginTask(project: Project,
-        defaultDeployExtension: DefaultDeployExtension) {
+    private fun registerLoginTask(
+        project: Project,
+        defaultDeployExtension: DefaultDeployExtension
+    ) {
         project.tasks.register(dockerLogin, DockerLoginTask::class.java) {
             it.loginMethod = defaultDeployExtension.defaultDockerLoginMethod
             it.username = defaultDeployExtension.defaultDockerLoginUsername

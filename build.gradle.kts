@@ -8,6 +8,13 @@ plugins {
     id("org.owasp.dependencycheck") version "6.1.5"
     // static code analysis
     id("io.gitlab.arturbosch.detekt") version "1.16.0"
+    id("com.diffplug.spotless") version "5.6.1"
+}
+val ktLintVersion = "0.41.0"
+spotless {
+    kotlin {
+        ktlint(ktLintVersion)
+    }
 }
 
 dependencies {
