@@ -16,8 +16,8 @@ The plugin expects your sources in the following directories:
 
 ### Workflow
 
-1. Execute the `prepareDockerBuild` task which you have to configure. It should place all relevant files to the
-   directory `build/buildDocker`.
+1. Execute the `prepareDockerBuild` task which you have to configure.
+   It should place all files needed for the docker build to the directory `build/buildDocker`.
 2. The docker image is built in the directory `build/buildDocker` and tagged with `{registry}/{serviceName}:{timestamp}`
 3. The previously build docker image is pushed to `{registry}/{serviceName}:{timestamp}`
    and `{registry}/{serviceName}:{latest}`
@@ -44,7 +44,9 @@ deploy {
 ```
 
 ## Multi Project Setup
-For a multi project setup you can specify `defaultDeploy` parameters in the rootProject. (only the root project is considered)
+
+For a multi project setup you can specify `defaultDeploy` parameters in the rootProject. (only the root project is
+considered)
 
 These attributes are taken for each deploy plugin if you do not specify them otherwise.
 
@@ -66,13 +68,17 @@ defaultDeploy {
 ```
 
 ## Docker Login Methods
+
 Currently, two login methods are available.
 
 ### CLASSIC
-This method uses the `docker login` command with username and password.
-You have to provide the parameters `dockerLoginUserName` and `dockerLoginPassword`.
+
+This method uses the `docker login` command with username and password. You have to provide the
+parameters `dockerLoginUserName` and `dockerLoginPassword`.
 
 ### AWS
-This method extracts the login token from the `aws ecr get-login-password` command.
-Therefore, you need to have the [aws-cli v2](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed and configured for your account.
+
+This method extracts the login token from the `aws ecr get-login-password` command. Therefore, you need to have
+the [aws-cli v2](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed and configured for your
+account.
 
