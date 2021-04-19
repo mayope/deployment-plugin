@@ -39,7 +39,7 @@ tasks {
 }
 
 pluginBundle {
-    website = "https://mayope.net"
+    website = "https://github.com/mayope/deployment-plugin"
     vcsUrl = "https://github.com/mayope/deployment-plugin"
     tags = listOf("helm", "kubernetes", "deployment", "docker")
 
