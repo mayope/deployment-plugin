@@ -85,23 +85,24 @@ open class DeployTask : DefaultTask() {
     @SuppressWarnings("SpreadOperator")
     private fun Project.deployForEnvironment(
         serviceName: String,
-        environment: String,
+        namespace: String,
         attributes: Map<String, String>
     ) {
         val appVersion = file(dockerVersionFile()).readText()
 
         val tag = "$registry/$serviceName:$appVersion"
-        val remoteVersion = queryRemoteVersion(serviceName, environment)
+        val remoteVersion = queryRemoteVersion(serviceName, namespace)
         val remoteTag = "$registry/$serviceName:$remoteVersion"
 
-        println("Deploying service: $serviceName, currentVersion: $remoteVersion in environment: $environment")
+        println("Deploying service: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
 
         val versionToDeploy = findVersionToDeploy(tag, remoteTag, remoteVersion, appVersion)
 
+        val helmAttributes = attributes.entries.map { "${it.key}=${it.value}" }.joinToString(",")
         val args = arrayOf(
             "helm", "upgrade", "--install", serviceName, ".", "--set",
-            "image.version=$versionToDeploy", "-n", environment
-        ).plus(attributes.entries.map { "${it.key}=${it.value}" })
+            "image.version=$versionToDeploy,$helmAttributes", "-n", namespace
+        )
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
         exec {
@@ -112,6 +113,7 @@ open class DeployTask : DefaultTask() {
         println("Deployed version: $versionToDeploy of service: $serviceName")
         file(deployedDockerVersionFile()).writeText(versionToDeploy)
     }
+
 
     private fun Project.findVersionToDeploy(
         tag: String,

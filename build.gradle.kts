@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm") version "1.4.21"
 
-    id("com.gradle.plugin-publish") version "0.11.0"
+    id("com.gradle.plugin-publish") version "0.14.0"
 
     id("java-gradle-plugin")
     // Security check for dependencies by task
@@ -9,6 +9,8 @@ plugins {
     // static code analysis
     id("io.gitlab.arturbosch.detekt") version "1.16.0"
     id("com.diffplug.spotless") version "5.6.1"
+    id("signing")
+    id("maven-publish")
 }
 val ktLintVersion = "0.41.0"
 spotless {
@@ -16,6 +18,8 @@ spotless {
         ktlint(ktLintVersion)
     }
 }
+
+project.group = "net.mayope"
 
 dependencies {
     implementation("com.beust:klaxon:5.2")
@@ -43,13 +47,59 @@ pluginBundle {
     vcsUrl = "https://github.com/mayope/deployment-plugin"
     tags = listOf("helm", "kubernetes", "deployment", "docker")
 
+}
+gradlePlugin {
     plugins {
-        create("deployment-plugin") {
+        create("deployplugin") {
+            group = project.group
             id = "net.mayope.deployplugin"
             displayName = "Mayope Deployment Plugin"
             description = "Opinionated tool to deploy docker container to kubernetes using helm"
+            implementationClass="net.mayope.deployplugin.DeployPlugin"
         }
     }
+}
+
+publishing {
+    publications {
+        register("mavenJava", MavenPublication::class) {
+            from(components["java"])
+        }
+    }
+}
+
+val publications = project.publishing.publications.withType(MavenPublication::class.java).map {
+    with(it.pom) {
+        withXml {
+            val root = asNode()
+            root.appendNode("name", "Mayope Deployment Plugin")
+            root.appendNode("description", "Opinionated tool to deploy docker container to kubernetes using helm")
+            root.appendNode("url", "https://github.com/mayope/deployment-plugin")
+        }
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://github.com/mayope/deployment-plugin")
+                distribution.set("repo")
+            }
+        }
+        developers {
+            developer {
+                id.set("klg71")
+                name.set("Lukas Meisegeier")
+                email.set("MeisegeierLukas@gmx.de")
+            }
+        }
+        scm {
+            url.set("https://github.com/mayope/deployment-plugin")
+            connection.set("scm:git:git://github.com/mayope/deployment-plugin.git")
+            developerConnection.set("scm:git:ssh://git@github.com/mayope/deployment-plugin.git")
+        }
+    }
+}
+
+signing{
+    sign(publishing.publications["mavenJava"])
 }
 dependencyCheck {
     failOnError = true

@@ -14,6 +14,7 @@ internal fun Project.dockerTagFile() = "$buildDir/current_docker_tag"
 internal fun Project.dockerPushedTagFile() = "$buildDir/current_pushed_docker_tag"
 internal fun Project.dockerVersionFile() = "$buildDir/current_docker_version"
 internal fun Project.deployedDockerVersionFile() = "$buildDir/deployed_docker_version"
+internal fun Project.deployedIngressesDir() = "$buildDir/ingress/"
 
 internal fun Project.command(cmd: List<String>, workingDirectory: String = ".") =
     ByteArrayOutputStream().also { stream ->

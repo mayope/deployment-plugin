@@ -58,51 +58,68 @@ class DeployPlugin : Plugin<Project> {
         project.extensions.create("deployDefault", DefaultDeployExtension::class.java)
 
         project.afterEvaluate {
-            val deployExtension = project.extensions.getByType(DeployExtension::class.java)
-            val defaultDeployExtension = project.rootProject.extensions.getByType(DefaultDeployExtension::class.java)
-
-            registerLoginTask(project, defaultDeployExtension)
-
-            val serviceName = deployExtension.serviceName
-
-            val registry =
-                deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
-                    "You have to specify at least one DockerRegistryRoot," +
-                        " either in the deploy{} or in the deployDefault{} extension"
+            val deployExtension = extension(project)
+            if (deployExtension == null || deployExtension.serviceName.isBlank()) {
+                project.logger.info(
+                    "Found no DeployExtension / deploy{}-block, disabling deploy tasks for this project"
                 )
-            val targetNamespaces = deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
-            val prepareTask = deployExtension.prepareTask ?: defaultDeployExtension.defaultPrepareTask
-
-            val stagePrepareBuildDocker = prepareTask ?: "prepareBuildDocker"
-
-            if (prepareTask == null) {
-                project.tasks.register(stagePrepareBuildDocker, Copy::class.java) {
-                    val workingDirectory = "${project.buildDir}/buildDocker"
-                    it.dependsOn("bootJar")
-                    it.from("${project.buildDir}/libs") {
-                        it.include("*.*")
-                    }
-                    it.from("src/docker") {
-                        it.include("*")
-                    }
-                    it.into(workingDirectory)
-                }
+            } else {
+                registerTasks(project, deployExtension)
             }
-
-            registerBuildDockerTask(project, serviceName, stagePrepareBuildDocker)
-
-            registerPushDockerTask(project, serviceName, registry)
-
-            val attributes = deployExtension.attributes.plus(defaultDeployExtension.defaultAttributes)
-            registerDeployTask(project, serviceName, targetNamespaces, attributes)
         }
     }
+
+    private fun registerTasks(project: Project, deployExtension: DeployExtension) {
+        val defaultDeployExtension = defaultExtension(project)
+
+        registerLoginTask(project, deployExtension, defaultDeployExtension)
+
+        val serviceName = deployExtension.serviceName
+
+        val registry =
+            deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
+                "You have to specify at least one DockerRegistryRoot," +
+                        " either in the deploy{} or in the deployDefault{} extension"
+            )
+        val targetNamespaces =
+            deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
+        val prepareTask = deployExtension.prepareTask ?: defaultDeployExtension.defaultPrepareTask
+
+        val stagePrepareBuildDocker = prepareTask ?: "prepareBuildDocker"
+
+        if (prepareTask == null) {
+            project.tasks.register(stagePrepareBuildDocker, Copy::class.java) {
+                val workingDirectory = "${project.buildDir}/buildDocker"
+                it.dependsOn("bootJar")
+                it.from("${project.buildDir}/libs") {
+                    it.include("*.*")
+                }
+                it.from("src/docker") {
+                    it.include("*")
+                }
+                it.into(workingDirectory)
+            }
+        }
+
+        registerBuildDockerTask(project, serviceName, stagePrepareBuildDocker, registry)
+
+        registerPushDockerTask(project, serviceName, registry)
+
+        val attributes = deployExtension.attributes.plus(defaultDeployExtension.defaultAttributes)
+        registerDeployTask(project, serviceName, targetNamespaces, attributes, registry)
+    }
+
+    private fun extension(project: Project) = project.extensions.findByType(DeployExtension::class.java)
+
+    private fun defaultExtension(project: Project) =
+        project.rootProject.extensions.findByType(DefaultDeployExtension::class.java) ?: DefaultDeployExtension()
 
     private fun registerDeployTask(
         project: Project,
         serviceName: String,
         targetNamespaces: List<String>,
-        attributes: Map<String, String>
+        attributes: Map<String, String>,
+        registry: String
     ) {
         project.tasks.register("deploy${serviceName.capitalize()}")
 
@@ -118,6 +135,7 @@ class DeployPlugin : Plugin<Project> {
                 it.serviceName = serviceName
                 it.attributes = attributes
                 it.targetNamespaces = listOf(namespace)
+                it.registry = registry
             }
             project.tasks.named("deploy${serviceName.capitalize()}") {
                 it.dependsOn("deploy${serviceName.capitalize()}${namespace.capitalize()}")
@@ -128,9 +146,11 @@ class DeployPlugin : Plugin<Project> {
     private fun registerBuildDockerTask(
         project: Project,
         serviceName: String,
-        stagePrepareBuildDocker: String
+        stagePrepareBuildDocker: String,
+        registry: String
     ) {
         project.tasks.register(stageBuildDocker, DockerBuildTask::class.java) {
+            it.registry = registry
             it.serviceName = serviceName
             it.description = "Builds the dockerImage of $serviceName service."
             it.group = "build"
@@ -158,12 +178,16 @@ class DeployPlugin : Plugin<Project> {
 
     private fun registerLoginTask(
         project: Project,
+        deployExtension: DeployExtension,
         defaultDeployExtension: DefaultDeployExtension
     ) {
         project.tasks.register(dockerLogin, DockerLoginTask::class.java) {
-            it.loginMethod = defaultDeployExtension.defaultDockerLoginMethod
-            it.username = defaultDeployExtension.defaultDockerLoginUsername
-            it.password = defaultDeployExtension.defaultDockerLoginPassword
+            it.host = deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
+                "you have to define a dockerRegistryRoot either in the deploy{} or defaultDeploy{} block"
+            )
+            it.loginMethod = deployExtension.dockerLoginMethod ?: defaultDeployExtension.defaultDockerLoginMethod
+            it.username = deployExtension.dockerLoginUsername ?: defaultDeployExtension.defaultDockerLoginUsername
+            it.password = deployExtension.dockerLoginPassword ?: defaultDeployExtension.defaultDockerLoginPassword
         }
     }
 }
