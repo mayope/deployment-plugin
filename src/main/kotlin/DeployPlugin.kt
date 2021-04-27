@@ -6,6 +6,7 @@ import net.mayope.deployplugin.tasks.DockerLoginTask
 import net.mayope.deployplugin.tasks.DockerPushTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 
 /**
@@ -57,22 +58,42 @@ class DeployPlugin : Plugin<Project> {
         project.extensions.create("deploy", DeployExtension::class.java)
         project.extensions.create("deployDefault", DefaultDeployExtension::class.java)
 
+
         project.afterEvaluate {
             val deployExtension = extension(project)
+            val defaultDeployExtension = defaultExtension(project)
+            registerLoginTask(project, deployExtension, defaultDeployExtension)
+
             if (deployExtension == null || deployExtension.serviceName.isBlank()) {
                 project.logger.info(
-                    "Found no DeployExtension / deploy{}-block, disabling deploy tasks for this project"
+                    "Found no DeployExtension / deploy{}-block," +
+                            " disabling deploy tasks for this project, only added docker login task"
                 )
             } else {
-                registerTasks(project, deployExtension)
+                ensureRootTaskExists(deployExtension, defaultDeployExtension, project)
+                registerTasks(project, deployExtension, defaultDeployExtension)
             }
         }
     }
 
-    private fun registerTasks(project: Project, deployExtension: DeployExtension) {
-        val defaultDeployExtension = defaultExtension(project)
+    private fun ensureRootTaskExists(deployExtension: DeployExtension,
+        defaultDeployExtension: DefaultDeployExtension,
+        project: Project) {
+        targetNamespaces(deployExtension, defaultDeployExtension).filter { namespace ->
+            project.rootProject.tasks.none { it.name == deployNamespaceName(namespace) }
+        }.forEach { namespace ->
+            project.rootProject.tasks.register(deployNamespaceName(namespace)) {
+                it.group = "deploy"
+                it.description = "Deploys all services for the namespace: $namespace"
+            }
+        }
+    }
 
-        registerLoginTask(project, deployExtension, defaultDeployExtension)
+    private fun deployNamespaceName(namespace: String) = "deploy${namespace.capitalize()}"
+
+    private fun registerTasks(project: Project,
+        deployExtension: DeployExtension,
+        defaultDeployExtension: DefaultDeployExtension) {
 
         val serviceName = deployExtension.serviceName
 
@@ -81,8 +102,6 @@ class DeployPlugin : Plugin<Project> {
                 "You have to specify at least one DockerRegistryRoot," +
                         " either in the deploy{} or in the deployDefault{} extension"
             )
-        val targetNamespaces =
-            deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
         val prepareTask = deployExtension.prepareTask ?: defaultDeployExtension.defaultPrepareTask
 
         val stagePrepareBuildDocker = prepareTask ?: "prepareBuildDocker"
@@ -106,15 +125,21 @@ class DeployPlugin : Plugin<Project> {
         registerPushDockerTask(project, serviceName, registry)
 
         val attributes = deployExtension.attributes.plus(defaultDeployExtension.defaultAttributes)
-        registerDeployTask(project, serviceName, targetNamespaces, attributes, registry)
+        registerDeployTasks(
+            project, serviceName, targetNamespaces(deployExtension, defaultDeployExtension), attributes, registry
+        )
     }
+
+    private fun targetNamespaces(deployExtension: DeployExtension,
+        defaultDeployExtension: DefaultDeployExtension) =
+        deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
 
     private fun extension(project: Project) = project.extensions.findByType(DeployExtension::class.java)
 
     private fun defaultExtension(project: Project) =
         project.rootProject.extensions.findByType(DefaultDeployExtension::class.java) ?: DefaultDeployExtension()
 
-    private fun registerDeployTask(
+    private fun registerDeployTasks(
         project: Project,
         serviceName: String,
         targetNamespaces: List<String>,
@@ -124,7 +149,6 @@ class DeployPlugin : Plugin<Project> {
         project.tasks.register("deploy${serviceName.capitalize()}")
 
         targetNamespaces.forEach { namespace ->
-
             project.tasks.register(
                 "deploy${serviceName.capitalize()}${namespace.capitalize()}",
                 DeployTask::class.java
@@ -140,7 +164,17 @@ class DeployPlugin : Plugin<Project> {
             project.tasks.named("deploy${serviceName.capitalize()}") {
                 it.dependsOn("deploy${serviceName.capitalize()}${namespace.capitalize()}")
             }
+            val rootDeployTask = namespaceDeploymentTaskInRootProject(project, namespace)
+            rootDeployTask.dependsOn(
+                project.tasks.findByPath("deploy${serviceName.capitalize()}${namespace.capitalize()}")?.path
+            )
         }
+    }
+
+    private fun namespaceDeploymentTaskInRootProject(project: Project, namespace: String): Task {
+        return project.rootProject.tasks.findByPath("deploy${namespace.capitalize()}") ?: error(
+            "task should aready be created"
+        )
     }
 
     private fun registerBuildDockerTask(
@@ -178,16 +212,16 @@ class DeployPlugin : Plugin<Project> {
 
     private fun registerLoginTask(
         project: Project,
-        deployExtension: DeployExtension,
+        deployExtension: DeployExtension?,
         defaultDeployExtension: DefaultDeployExtension
     ) {
         project.tasks.register(dockerLogin, DockerLoginTask::class.java) {
-            it.host = deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
+            it.host = deployExtension?.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
                 "you have to define a dockerRegistryRoot either in the deploy{} or defaultDeploy{} block"
             )
-            it.loginMethod = deployExtension.dockerLoginMethod ?: defaultDeployExtension.defaultDockerLoginMethod
-            it.username = deployExtension.dockerLoginUsername ?: defaultDeployExtension.defaultDockerLoginUsername
-            it.password = deployExtension.dockerLoginPassword ?: defaultDeployExtension.defaultDockerLoginPassword
+            it.loginMethod = deployExtension?.dockerLoginMethod ?: defaultDeployExtension.defaultDockerLoginMethod
+            it.username = deployExtension?.dockerLoginUsername ?: defaultDeployExtension.defaultDockerLoginUsername
+            it.password = deployExtension?.dockerLoginPassword ?: defaultDeployExtension.defaultDockerLoginPassword
         }
     }
 }
