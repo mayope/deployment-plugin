@@ -2,7 +2,13 @@
 
 This is an opinionated plugin to deploy docker images to kubernetes using helm.
 
-## Requirements
+Deployment configurations are organised through profiles.
+These profiles determine which  `AWS_PROFILE`(in case of multiple accounts) to use and which `KUBECONFIG`(in case of multiple clusters) to take.
+
+The plugin is build for a multi-module setup.
+You may define default values in the rootProject and customize them in the subProjects
+
+## Requirements[![Maven metadata URL](https://img.shields.io/maven-metadata/v?label=Plugin&metadataUrl=https%3A%2F%2Fplugins.gradle.org%2Fm2%2Fnet%2Fmayope%2Fdeployplugin%2Fnet.mayope.deployplugin.gradle.plugin%2Fmaven-metadata.xml)](https://plugins.gradle.org/plugin/net.mayope.deployplugin)
 
 - [helm](https://helm.sh/docs/intro/install/) is installed and available in path
 - [docker](https://docs.docker.com/get-docker/) is installed and available in path
@@ -32,14 +38,18 @@ plugins {
 }
 
 deploy {
-    serviceName = "hello" # docker image and helm deployment name
-    dockerRegistryRoot = "registry.mayope.net" # docker registry to use
-    dockerLoginUsername = "username" # username for the docker registry, needed on login method classic
-    dockerLoginPassword = "password" # password for the docker registry, needed on login method classic
-    dockerLoginMethod = DockerLoginMethod.CLASSIC # Docker login method, for AWS see below
-    targetNamespaces = listOf("default") # all namespaces where the app should be deployt
-    prepareTask = "prepareBuildDocker" # task the copies all needed files to build/buildDocker
-    attributes = mapOf("key" to "value") # this map is given to helm if you need to parameterize your helm chart
+    serviceName = "hello" // docker image and helm deployment name
+    default{ // use the default profile
+       dockerRegistryRoot = "registry.mayope.net" // docker registry to use
+       dockerLoginUsername = "username" // username for the docker registry, needed on login method classic
+       dockerLoginPassword = "password" // password for the docker registry, needed on login method classic
+       dockerLoginMethod = DockerLoginMethod.CLASSIC // Docker login method, for AWS see below
+       targetNamespaces = listOf("default") // all namespaces where the app should be deployt
+       prepareTask = "prepareBuildDocker" // task the copies all needed files to build/buildDocker
+       attributes = mapOf("key" to "value") // this map is given to helm if you need to parameterize your helm chart
+       awsProfile = "default" // default null, not set
+       kubeConfig = System.getProperty("user.home")+"/.kube/config" // default null, not set
+    }
 }
 ```
 
@@ -56,14 +66,19 @@ plugins {
 }
 
 defaultDeploy {
-    defaultDockerRegistryRoot = "registry.mayope.net" 
-    defaultTargetNamespaces = listOf("default") 
-    defaultPrepareTask = "prepareBuildDocker" 
-    defaultAttributes = mapOf("key" to "value") # These attributes are merged with the attributes of deploy {}
-    
-    defaultDockerLoginUsername = "username" 
-    defaultDockerLoginPassword = "password" 
-    defaultDockerLoginMethod = DockerLoginMethod.CLASSIC 
+   default { // Use the default profile
+       dockerRegistryRoot = "registry.mayope.net" 
+       targetNamespaces = listOf("default") 
+       prepareTask = "prepareBuildDocker" 
+       awsProfile = ""
+       kubeConfig = System.getProperty("user.home")+"/.kube/config"
+       
+       attributes = mapOf("key" to "value") // These attributes are merged with the attributes of deploy {}
+       
+       dockerLoginUsername = "username" 
+       dockerLoginPassword = "password" 
+       dockerLoginMethod = DockerLoginMethod.CLASSIC 
+    }
 }
 ```
 
@@ -81,4 +96,5 @@ parameters `dockerLoginUserName` and `dockerLoginPassword`.
 This method extracts the login token from the `aws ecr get-login-password` command. Therefore, you need to have
 the [aws-cli v2](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed and configured for your
 account.
+Therefore, the `awsProfile` is used as `AWS_PROFILE` environment variable for the `aws`-command.
 

@@ -1,15 +1,33 @@
 package net.mayope.deployplugin
 
-import net.mayope.deployplugin.tasks.DockerLoginMethod
+internal interface WithProfile {
+    val profiles: MutableList<DeployProfile>
+    fun deploymentProfiles() = profiles.toList()
 
-open class DefaultDeployExtension {
-    var defaultDockerRegistryRoot: String? = null
+    fun profile(name: String, call: DeployProfile.() -> Unit) {
+        if(profiles.any{  it.name==name  }){
+            error("DeployProfile with name: $name already exists please mention each profile only once")
+        }
+        DeployProfile(name).apply {
+            call()
+        }.also {
+            profiles.add(it)
+        }
+    }
 
-    var defaultAttributes: Map<String, String> = emptyMap()
-    var defaultPrepareTask: String? = null
-    var defaultTargetNamespaces: List<String> = listOf("default")
+    fun default(call: DeployProfile.() -> Unit) {
+        if(profiles.any{  it.name=="default"  }){
+            error("DeployProfile with name: default already exists please mention each profile only once")
+        }
+        DeployProfile("default").apply {
+            call()
+        }.also {
+            profiles.add(it)
+        }
 
-    var defaultDockerLoginMethod: DockerLoginMethod = DockerLoginMethod.CLASSIC
-    var defaultDockerLoginUsername: String = ""
-    var defaultDockerLoginPassword: String = ""
+    }
+}
+
+open class DefaultDeployExtension : WithProfile {
+    override val profiles = mutableListOf<DeployProfile>()
 }

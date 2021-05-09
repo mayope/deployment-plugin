@@ -8,6 +8,9 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import java.time.Instant
 
+
+internal fun Project.dockerVersionFile() = "$buildDir/current_docker_version"
+
 open class DockerBuildTask : DefaultTask() {
     @Input
     var registry: String = ""

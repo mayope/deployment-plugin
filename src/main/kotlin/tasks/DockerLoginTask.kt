@@ -12,10 +12,14 @@ import java.time.temporal.ChronoUnit
 enum class DockerLoginMethod {
     CLASSIC, AWS;
 
-    fun login(project: Project, host: String, username: String, password: String): String {
+    fun login(project: Project,
+        host: String,
+        username: String,
+        password: String,
+        awsProfile: String? = null): String {
         return when (this) {
             CLASSIC -> project.classicLogin(host, username, password)
-            AWS -> project.awsLogin(host)
+            AWS -> project.awsLogin(host, awsProfile)
         }
     }
 
@@ -29,12 +33,13 @@ enum class DockerLoginMethod {
         return "logged in"
     }
 
-    fun Project.awsLogin(host: String): String {
+    fun Project.awsLogin(host: String, awsProfile: String?): String {
         if (host.isBlank()) {
             error("You have to configure host for aws docker login")
         }
         ByteArrayOutputStream().use { os ->
             exec {
+                it.environment(awsProfile(awsProfile))
                 it.commandLine("aws", "ecr", "get-login-password")
                 it.standardOutput = os
             }
@@ -50,6 +55,10 @@ enum class DockerLoginMethod {
             return loginToken
         }
     }
+
+    private fun awsProfile(awsProfile: String?) = awsProfile?.let {
+        mapOf("AWS_PROFILE" to awsProfile)
+    } ?: emptyMap()
 }
 
 @Suppress("MagicNumber")
@@ -68,6 +77,11 @@ open class DockerLoginTask : DefaultTask() {
     @Input
     @Optional
     var password: String = ""
+
+    @Input
+    @Optional
+    var awsProfile: String? = null
+
     private val loginTokenFile = "${project.rootProject.buildDir}/login_token"
 
     init {
@@ -83,6 +97,6 @@ open class DockerLoginTask : DefaultTask() {
 
     @TaskAction
     fun login() {
-        loginMethod.login(project, host, username, password)
+        loginMethod.login(project, host, username, password, awsProfile)
     }
 }

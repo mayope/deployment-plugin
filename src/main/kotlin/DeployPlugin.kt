@@ -1,13 +1,7 @@
 package net.mayope.deployplugin
 
-import net.mayope.deployplugin.tasks.DeployTask
-import net.mayope.deployplugin.tasks.DockerBuildTask
-import net.mayope.deployplugin.tasks.DockerLoginTask
-import net.mayope.deployplugin.tasks.DockerPushTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.tasks.Copy
 
 /**
  * Handle docker build and deployment of services to kubernetes using docker and helm
@@ -49,9 +43,7 @@ import org.gradle.api.tasks.Copy
  */
 class DeployPlugin : Plugin<Project> {
 
-    private val dockerLogin = "dockerLogin"
-    private val stageBuildDocker = "buildDocker"
-    private val stagePushBuildDocker = "pushBuildDocker"
+    private val profileStore = ProfileStore()
 
     override fun apply(project: Project) {
 
@@ -60,168 +52,61 @@ class DeployPlugin : Plugin<Project> {
 
 
         project.afterEvaluate {
-            val deployExtension = extension(project)
             val defaultDeployExtension = defaultExtension(project)
-            registerLoginTask(project, deployExtension, defaultDeployExtension)
+            val deployExtension = extension(project)
+            profileStore.addProfiles(
+                defaultDeployExtension.deploymentProfiles(), deployExtension?.profiles ?: emptyList()
+            )
 
-            if (deployExtension == null || deployExtension.serviceName.isBlank()) {
-                project.logger.info(
-                    "Found no DeployExtension / deploy{}-block," +
-                            " disabling deploy tasks for this project, only added docker login task"
-                )
-            } else {
-                ensureRootTaskExists(deployExtension, defaultDeployExtension, project)
-                registerTasks(project, deployExtension, defaultDeployExtension)
+
+            createRootNamespaceTasks(project)
+
+            val serviceName = deployExtension?.serviceName ?: ""
+
+            createProfileTasks(project, serviceName)
+        }
+    }
+
+    private fun createProfileTasks(project: Project, serviceName: String) {
+        profileStore.profiles().flatMap {
+            project.registerTasksForProfile(it, serviceName)
+        }.let { tasks ->
+            if (tasks.isNotEmpty()) {
+                project.task("deploy${serviceName.capitalize()}AllProfiles").let {
+                    it.dependsOn(tasks)
+                }
             }
         }
     }
 
-    private fun ensureRootTaskExists(deployExtension: DeployExtension,
-        defaultDeployExtension: DefaultDeployExtension,
-        project: Project) {
-        targetNamespaces(deployExtension, defaultDeployExtension).filter { namespace ->
-            project.rootProject.tasks.none { it.name == deployNamespaceName(namespace) }
-        }.forEach { namespace ->
-            project.rootProject.tasks.register(deployNamespaceName(namespace)) {
-                it.group = "deploy"
-                it.description = "Deploys all services for the namespace: $namespace"
-            }
+    private fun createRootNamespaceTasks(project: Project) {
+        val usedNamespaces = profileStore.profiles().flatMap { it.targetNamespaces }.distinct()
+        project.ensureGlobalNamespaceTasksExists(usedNamespaces)
+    }
+
+    private fun Project.ensureGlobalNamespaceTasksExists(namespaces: List<String>) {
+        namespaces.filter {
+            isMissingInRootProject(it)
+        }.forEach {
+            registerRootNamespaceTask(it)
         }
     }
+
+    private fun Project.registerRootNamespaceTask(namespace: String) {
+        project.rootProject.tasks.register(deployNamespaceName(namespace)) {
+            it.group = "deploy"
+            it.description = "Deploys all services for the namespace: $namespace"
+        }
+    }
+
+    private fun Project.isMissingInRootProject(namespace: String) =
+        project.rootProject.tasks.none { it.name == deployNamespaceName(namespace) }
 
     private fun deployNamespaceName(namespace: String) = "deploy${namespace.capitalize()}"
-
-    private fun registerTasks(project: Project,
-        deployExtension: DeployExtension,
-        defaultDeployExtension: DefaultDeployExtension) {
-
-        val serviceName = deployExtension.serviceName
-
-        val registry =
-            deployExtension.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
-                "You have to specify at least one DockerRegistryRoot," +
-                        " either in the deploy{} or in the deployDefault{} extension"
-            )
-        val prepareTask = deployExtension.prepareTask ?: defaultDeployExtension.defaultPrepareTask
-
-        val stagePrepareBuildDocker = prepareTask ?: "prepareBuildDocker"
-
-        if (prepareTask == null) {
-            project.tasks.register(stagePrepareBuildDocker, Copy::class.java) {
-                val workingDirectory = "${project.buildDir}/buildDocker"
-                it.dependsOn("bootJar")
-                it.from("${project.buildDir}/libs") {
-                    it.include("*.*")
-                }
-                it.from("src/docker") {
-                    it.include("*")
-                }
-                it.into(workingDirectory)
-            }
-        }
-
-        registerBuildDockerTask(project, serviceName, stagePrepareBuildDocker, registry)
-
-        registerPushDockerTask(project, serviceName, registry)
-
-        val attributes = deployExtension.attributes.plus(defaultDeployExtension.defaultAttributes)
-        registerDeployTasks(
-            project, serviceName, targetNamespaces(deployExtension, defaultDeployExtension), attributes, registry
-        )
-    }
-
-    private fun targetNamespaces(deployExtension: DeployExtension,
-        defaultDeployExtension: DefaultDeployExtension) =
-        deployExtension.targetNamespaces ?: defaultDeployExtension.defaultTargetNamespaces
 
     private fun extension(project: Project) = project.extensions.findByType(DeployExtension::class.java)
 
     private fun defaultExtension(project: Project) =
         project.rootProject.extensions.findByType(DefaultDeployExtension::class.java) ?: DefaultDeployExtension()
-
-    private fun registerDeployTasks(
-        project: Project,
-        serviceName: String,
-        targetNamespaces: List<String>,
-        attributes: Map<String, String>,
-        registry: String
-    ) {
-        project.tasks.register("deploy${serviceName.capitalize()}")
-
-        targetNamespaces.forEach { namespace ->
-            project.tasks.register(
-                "deploy${serviceName.capitalize()}${namespace.capitalize()}",
-                DeployTask::class.java
-            ) {
-                it.description = "Builds and deploys the $serviceName service."
-                it.group = "deploy"
-                it.dependsOn(stagePushBuildDocker)
-                it.serviceName = serviceName
-                it.attributes = attributes
-                it.targetNamespaces = listOf(namespace)
-                it.registry = registry
-            }
-            project.tasks.named("deploy${serviceName.capitalize()}") {
-                it.dependsOn("deploy${serviceName.capitalize()}${namespace.capitalize()}")
-            }
-            val rootDeployTask = namespaceDeploymentTaskInRootProject(project, namespace)
-            rootDeployTask.dependsOn(
-                project.tasks.findByPath("deploy${serviceName.capitalize()}${namespace.capitalize()}")?.path
-            )
-        }
-    }
-
-    private fun namespaceDeploymentTaskInRootProject(project: Project, namespace: String): Task {
-        return project.rootProject.tasks.findByPath("deploy${namespace.capitalize()}") ?: error(
-            "task should aready be created"
-        )
-    }
-
-    private fun registerBuildDockerTask(
-        project: Project,
-        serviceName: String,
-        stagePrepareBuildDocker: String,
-        registry: String
-    ) {
-        project.tasks.register(stageBuildDocker, DockerBuildTask::class.java) {
-            it.registry = registry
-            it.serviceName = serviceName
-            it.description = "Builds the dockerImage of $serviceName service."
-            it.group = "build"
-            it.dependsOn(stagePrepareBuildDocker)
-        }
-
-        project.tasks.named("build") {
-            it.dependsOn(stageBuildDocker)
-        }
-    }
-
-    private fun registerPushDockerTask(
-        project: Project,
-        serviceName: String,
-        registry: String
-    ) {
-        project.tasks.register(stagePushBuildDocker, DockerPushTask::class.java) {
-            it.dependsOn(stageBuildDocker, dockerLogin)
-            it.description = "Pushes the dockerImage of $serviceName service."
-            it.group = "deploy"
-            it.serviceName = serviceName
-            it.registry = registry
-        }
-    }
-
-    private fun registerLoginTask(
-        project: Project,
-        deployExtension: DeployExtension?,
-        defaultDeployExtension: DefaultDeployExtension
-    ) {
-        project.tasks.register(dockerLogin, DockerLoginTask::class.java) {
-            it.host = deployExtension?.dockerRegistryRoot ?: defaultDeployExtension.defaultDockerRegistryRoot ?: error(
-                "you have to define a dockerRegistryRoot either in the deploy{} or defaultDeploy{} block"
-            )
-            it.loginMethod = deployExtension?.dockerLoginMethod ?: defaultDeployExtension.defaultDockerLoginMethod
-            it.username = deployExtension?.dockerLoginUsername ?: defaultDeployExtension.defaultDockerLoginUsername
-            it.password = deployExtension?.dockerLoginPassword ?: defaultDeployExtension.defaultDockerLoginPassword
-        }
-    }
 }
+

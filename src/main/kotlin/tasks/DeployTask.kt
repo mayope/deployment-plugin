@@ -1,8 +1,6 @@
 package net.mayope.deployplugin.tasks
 
-import com.beust.klaxon.JsonArray
-import com.beust.klaxon.JsonObject
-import com.beust.klaxon.Parser
+import net.mayope.deployplugin.ValidatedDeployProfile
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
@@ -13,26 +11,28 @@ import org.gradle.api.tasks.TaskAction
 open class DeployTask : DefaultTask() {
 
     @Input
-    var registry: String = ""
+    var validatedDeployProfile: ValidatedDeployProfile? = null
 
     @Input
-    @Optional
-    var targetNamespaces: List<String> = emptyList()
+    var targetNamespace: String = ""
 
     @Input
     var serviceName: String = ""
 
     @Input
     @Optional
-    var attributes: Map<String, String> = emptyMap()
+    var ownDockerImage: Boolean = true
 
     @InputDirectory
     var helmDir: String = "src/helm"
 
     @Suppress("TooGenericExceptionCaught")
-    private fun Project.queryRemoteVersion(release: String, environment: String): String? {
+    private fun Project.queryRemoteVersion(profile: ValidatedDeployProfile,release: String, environment: String): String? {
         return try {
-            command(listOf("helm", "get", "-n", environment, "values", release))
+            command(
+                listOf("helm", "get", "-n", environment, "values", release),
+                environment = kubeconfigEnv(profile)
+            )
                 .lines()
                 .map { it.trim() }
                 .firstOrNull { it.startsWith("version:") }
@@ -43,97 +43,63 @@ open class DeployTask : DefaultTask() {
         }
     }
 
-    @Suppress("TooGenericExceptionCaught", "SwallowedException", "ReturnCount")
-    private fun Project.tagsHaveEqualLayers(localTag: String, remoteTag: String): Boolean {
-        try {
-            command(listOf("docker", "image", "pull", remoteTag))
-        } catch (e: Throwable) {
-            return false
-        }
-
-        val remoteLayers = getLayers(remoteTag)
-        val localLayers = getLayers(localTag)
-        if (remoteLayers == null || localLayers == null) {
-            return false
-        }
-
-        return remoteLayers == localLayers
-    }
-
-    private fun getLayers(tag: String): JsonArray<String>? {
-        val content = project.command(listOf("docker", "image", "inspect", tag))
-        return parseLayers(content)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun parseLayers(content: String): JsonArray<String>? {
-        return (Parser.default().parse(content.byteInputStream()) as JsonArray<JsonObject>).run {
-            firstOrNull()
-        }?.run {
-            obj("RootFS")
-        }?.run {
-            array("Layers")
-        }
-    }
-
-    private fun Project.deploy(serviceName: String) {
-        for (environment in targetNamespaces) {
-            deployForEnvironment(serviceName, environment, attributes)
-        }
-    }
+    private fun kubeconfigEnv(profile: ValidatedDeployProfile) = profile.kubeConfig?.let {
+        mapOf("KUBECONFIG" to it)
+    }?: emptyMap()
 
     @SuppressWarnings("SpreadOperator")
     private fun Project.deployForEnvironment(
+        profile: ValidatedDeployProfile,
         serviceName: String,
         namespace: String,
-        attributes: Map<String, String>
     ) {
-        val appVersion = file(dockerVersionFile()).readText()
+        if (ownDockerImage) {
+            val appVersion = file(dockerVersionFile()).readText()
 
-        val tag = "$registry/$serviceName:$appVersion"
-        val remoteVersion = queryRemoteVersion(serviceName, namespace)
-        val remoteTag = "$registry/$serviceName:$remoteVersion"
+            val registry = profile.dockerRegistryRoot
+            val tag = "$registry/$serviceName:$appVersion"
+            val remoteVersion = queryRemoteVersion(profile,serviceName, namespace)
+            val remoteTag = "$registry/$serviceName:$remoteVersion"
 
-        println("Deploying service: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
+            println("Deploying chart: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
 
-        val versionToDeploy = findVersionToDeploy(tag, remoteTag, remoteVersion, appVersion)
+            val attributesWithImageVersion = findVersionToDeploy(tag, remoteTag, remoteVersion, appVersion).let {
+                println("Deploying version: $it of image: $serviceName")
+                profile.attributes.plus(mapOf("image.version" to it))
+            }
+            upgradeChart(profile, attributesWithImageVersion, serviceName, namespace)
 
+        } else {
+            upgradeChart(profile, profile.attributes, serviceName, namespace)
+        }
+    }
+
+    private fun Project.upgradeChart(
+        profile: ValidatedDeployProfile,
+        attributes: Map<String, String>,
+        chartName: String,
+        namespace: String) {
         val helmAttributes = attributes.entries.map { "${it.key}=${it.value}" }.joinToString(",")
         val args = arrayOf(
-            "helm", "upgrade", "--install", serviceName, ".", "--set",
-            "image.version=$versionToDeploy,$helmAttributes", "-n", namespace
+            "helm", "upgrade", "--install", chartName, ".", "--set",
+            helmAttributes, "-n", namespace
         )
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
         exec {
+            it.environment(kubeconfigEnv(profile))
             it.workingDir(helmDir)
             it.commandLine(*args)
         }
-
-        println("Deployed version: $versionToDeploy of service: $serviceName")
-        file(deployedDockerVersionFile()).writeText(versionToDeploy)
+        file(deployedChartFile(profile.name, namespace, chartName)).parentFile.mkdirs()
+        file(deployedChartFile(profile.name, namespace, chartName)).writeText(helmAttributes)
     }
 
-
-    private fun Project.findVersionToDeploy(
-        tag: String,
-        remoteTag: String,
-        remoteVersion: String?,
-        appVersion: String
-    ): String {
-        return if (tagsHaveEqualLayers(tag, remoteTag) && remoteVersion != null) {
-            logger.info("Local version has same layers, deploying existing version.")
-            println("Deploying existing version: $appVersion")
-            remoteVersion
-        } else {
-            logger.info("Local version has different layers, deploying new version.")
-            println("Deploying new version: $appVersion")
-            appVersion
-        }
-    }
 
     @TaskAction
     fun deploy() {
-        project.deploy(serviceName)
+        project.deployForEnvironment(
+            validatedDeployProfile ?: error("DeployProfile must be set nonnull"), serviceName, targetNamespace
+        )
     }
 }
