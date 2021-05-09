@@ -65,7 +65,7 @@ plugins {
   id "net.mayope.deployplugin" version "x.x.x"
 }
 
-defaultDeploy {
+deployDefault {
    default { // Use the default profile
        dockerRegistryRoot = "registry.mayope.net" 
        targetNamespaces = listOf("default") 
