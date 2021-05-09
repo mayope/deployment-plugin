@@ -1,4 +1,4 @@
-# Gradle Deployment Plugin
+# Gradle Deployment Plugin[![Maven metadata URL](https://img.shields.io/maven-metadata/v?label=Plugin&metadataUrl=https%3A%2F%2Fplugins.gradle.org%2Fm2%2Fnet%2Fmayope%2Fdeployplugin%2Fnet.mayope.deployplugin.gradle.plugin%2Fmaven-metadata.xml)](https://plugins.gradle.org/plugin/net.mayope.deployplugin)
 
 This is an opinionated plugin to deploy docker images to kubernetes using helm.
 
@@ -8,7 +8,7 @@ These profiles determine which  `AWS_PROFILE`(in case of multiple accounts) to u
 The plugin is build for a multi-module setup.
 You may define default values in the rootProject and customize them in the subProjects
 
-## Requirements[![Maven metadata URL](https://img.shields.io/maven-metadata/v?label=Plugin&metadataUrl=https%3A%2F%2Fplugins.gradle.org%2Fm2%2Fnet%2Fmayope%2Fdeployplugin%2Fnet.mayope.deployplugin.gradle.plugin%2Fmaven-metadata.xml)](https://plugins.gradle.org/plugin/net.mayope.deployplugin)
+## Requirements
 
 - [helm](https://helm.sh/docs/intro/install/) is installed and available in path
 - [docker](https://docs.docker.com/get-docker/) is installed and available in path
