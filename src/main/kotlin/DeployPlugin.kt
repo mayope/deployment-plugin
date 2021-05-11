@@ -72,7 +72,10 @@ class DeployPlugin : Plugin<Project> {
             project.registerTasksForProfile(it, serviceName)
         }.let { tasks ->
             if (tasks.isNotEmpty()) {
-                project.task("deploy${serviceName.capitalize()}AllProfiles").let {
+                project.task("deploy${serviceName.capitalize()}AllProfiles") {
+                    it.group = "deploy"
+                    it.description = "Deploy this service for all profiles"
+                }.let {
                     it.dependsOn(tasks)
                 }
             }
