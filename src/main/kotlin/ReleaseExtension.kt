@@ -1,6 +1,6 @@
 package net.mayope.deployplugin
 
-open class DeployExtension : WithProfile {
+open class ReleaseExtension : WithProfile {
     var serviceName: String = ""
 
     override val profiles = mutableListOf<Profile>()

@@ -50,14 +50,10 @@ class DeployPlugin : Plugin<Project> {
         project.extensions.create("deploy", DeployExtension::class.java)
         project.extensions.create("deployDefault", DefaultDeployExtension::class.java)
 
-
         project.afterEvaluate {
-            val defaultDeployExtension = defaultExtension(project)
             val deployExtension = extension(project)
-            profileStore.addProfiles(
-                defaultDeployExtension.deploymentProfiles(), deployExtension?.profiles ?: emptyList()
-            )
 
+            profileStore.init(project)
 
             createRootNamespaceTasks(project)
 
@@ -71,7 +67,7 @@ class DeployPlugin : Plugin<Project> {
         profileStore.profiles().flatMap {
             project.registerTasksForProfile(it, serviceName)
         }.let { tasks ->
-            if (tasks.isNotEmpty()) {
+            if (tasks.size > 1) {
                 project.task("deploy${serviceName.capitalize()}AllProfiles") {
                     it.group = "deploy"
                     it.description = "Deploy this service for all profiles"
@@ -83,7 +79,7 @@ class DeployPlugin : Plugin<Project> {
     }
 
     private fun createRootNamespaceTasks(project: Project) {
-        val usedNamespaces = profileStore.profiles().flatMap { it.targetNamespaces }.distinct()
+        val usedNamespaces = profileStore.profiles().flatMap { it.deploy?.targetNamespaces ?: emptyList() }.distinct()
         project.ensureGlobalNamespaceTasksExists(usedNamespaces)
     }
 
@@ -108,8 +104,4 @@ class DeployPlugin : Plugin<Project> {
     private fun deployNamespaceName(namespace: String) = "deploy${namespace.capitalize()}"
 
     private fun extension(project: Project) = project.extensions.findByType(DeployExtension::class.java)
-
-    private fun defaultExtension(project: Project) =
-        project.rootProject.extensions.findByType(DefaultDeployExtension::class.java) ?: DefaultDeployExtension()
 }
-

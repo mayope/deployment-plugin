@@ -8,13 +8,7 @@ import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import java.time.Instant
 
-
-internal fun Project.dockerVersionFile() = "$buildDir/current_docker_version"
-
 open class DockerBuildTask : DefaultTask() {
-    @Input
-    var registry: String = ""
-
     @Input
     var serviceName: String = ""
 
@@ -26,24 +20,19 @@ open class DockerBuildTask : DefaultTask() {
     var buildDockerDir: String = "${project.buildDir}/buildDocker"
 
     init {
-        outputs.files(project.dockerTagFile(), project.dockerVersionFile())
+        outputs.files(project.dockerTagFile(), project.dockerVersionFile(), project.dockerNameFile())
     }
 
-    private fun Project.buildDocker(serviceName: String) {
+    private fun Project.buildDocker() {
         val appVersion = determineVersion()
-        val tag = tag(registry, serviceName, appVersion)
+        val tag = tag("", serviceName, appVersion)
         exec {
             it.workingDir(buildDockerDir)
             it.commandLine("docker", "build", ".", "-t", tag)
         }
         file(dockerTagFile()).writeText(tag)
-        exec {
-            it.commandLine(
-                "docker", "tag", file(dockerTagFile()).readText(),
-                tagLatest(registry, serviceName)
-            )
-        }
         file(dockerVersionFile()).writeText(appVersion)
+        file(dockerNameFile()).writeText(serviceName)
     }
 
     private fun Project.determineVersion(): String {
@@ -56,6 +45,6 @@ open class DockerBuildTask : DefaultTask() {
 
     @TaskAction
     fun build() {
-        project.buildDocker(serviceName)
+        project.buildDocker()
     }
 }

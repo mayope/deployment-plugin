@@ -38,7 +38,6 @@ private fun parseLayers(content: String): JsonArray<String>? {
     }
 }
 
-
 fun Project.findVersionToDeploy(
     tag: String,
     remoteTag: String,
@@ -55,4 +54,3 @@ fun Project.findVersionToDeploy(
         appVersion
     }
 }
-

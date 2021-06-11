@@ -4,53 +4,70 @@ import net.mayope.deployplugin.tasks.DeployTask
 import net.mayope.deployplugin.tasks.DockerBuildTask
 import net.mayope.deployplugin.tasks.DockerLoginTask
 import net.mayope.deployplugin.tasks.DockerPushTask
+import net.mayope.deployplugin.tasks.HelmPushTask
+import net.mayope.deployplugin.tasks.dockerPushedTagFile
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 
-internal fun Project.registerTasksForProfile(profile: ValidatedDeployProfile, serviceName: String): List<String> {
-    val loginTask = registerLoginTask(profile)
-    if (serviceName.isBlank()) {
-        logger.info(
-            "No serviceName given for profile: ${profile.name} in project: ${name}. Only registered login task."
-        )
-        return emptyList()
+internal fun Project.registerTasksForProfile(profile: ValidatedProfile, serviceName: String): List<String> {
+    profile.dockerLogin?.let {
+        registerLoginTask(it, profile.taskSuffix())
     }
-    val prepareTask = registerPrepareBuildDockerTask(profile)
-    val buildTask = registerBuildDockerTask(profile, prepareTask, serviceName)
-    val pushDockerTask = registerPushDockerTask(profile, serviceName, buildTask, loginTask)
-    return registerDeployTasks(profile, serviceName, pushDockerTask)
+    val buildDockerTask = profile.dockerBuild?.let {
+        registerDockerBuildTask(it, serviceName, profile.taskSuffix())
+    }
+    val pushDockerTask = profile.dockerPush?.let {
+        if (buildDockerTask == null) {
+            error("Docker Push needs a dockerBuild first")
+        }
+        registerDockerPushTask(it, serviceName, profile.taskSuffix(), buildDockerTask)
+    }
+    val deployTasks = profile.deploy?.let {
+        registerDeployTasks(it, serviceName, profile.taskSuffix(), pushDockerTask)
+    } ?: emptyList()
+
+    val helmPushTasks = profile.helmPush?.let {
+        registerHelmPushTask(it, serviceName, profile.taskSuffix())
+    }
+
+    return deployTasks.plus(listOfNotNull(pushDockerTask, helmPushTasks))
 }
 
 private fun Project.registerLoginTask(
-    profile: ValidatedDeployProfile
+    profile: ValidatedDockerLoginProfile,
+    taskSuffix: String
 ): String {
-    val loginTask = "dockerLogin${profile.taskSuffix()}"
+    val loginTask = "dockerLogin$taskSuffix"
     tasks.register(loginTask, DockerLoginTask::class.java) {
-        it.host = profile.dockerRegistryRoot
-        it.loginMethod = profile.dockerLoginMethod
-        it.username = profile.dockerLoginUsername
-        it.password = profile.dockerLoginPassword
+        it.host = profile.registryRoot
+        it.loginMethod = profile.loginMethod
+        it.username = profile.loginUsername
+        it.password = profile.loginPassword
         it.description =
-            "Logs into the dockerRegistry: ${profile.dockerRegistryRoot} using method:" +
-                    " ${profile.dockerLoginMethod} on profile ${profile.name}."
+            "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
+            " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
 }
 
-private fun Project.registerBuildDockerTask(
-    profile: ValidatedDeployProfile,
-    prepareDockerTask: String,
-    serviceName: String
+private fun Project.registerDockerBuildTask(
+    profile: ValidatedDockerBuildProfile,
+    serviceName: String,
+    taskSuffix: String,
 ): String {
-    val dockerBuildTask = "dockerBuild${profile.taskSuffix()}"
+    val prepareTask = registerPrepareBuildDockerTask(profile, taskSuffix)
+    val dockerBuildTask = "dockerBuild$taskSuffix${serviceName.capitalize()}"
     tasks.register(dockerBuildTask, DockerBuildTask::class.java) {
-        it.registry = profile.dockerRegistryRoot
         it.serviceName = serviceName
-        it.description = "Builds the dockerImage of $serviceName service on profile ${profile.name}."
+        it.description = "Builds the dockerImage of $serviceName service."
         it.group = "build"
-        it.dependsOn(prepareDockerTask)
+        if (profile.dockerDir != null) {
+            it.buildDockerDir = profile.dockerDir
+        }
+        it.versionOverride = profile.version
+        it.dependsOn(prepareTask)
     }
 
     tasks.named("build") {
@@ -59,18 +76,36 @@ private fun Project.registerBuildDockerTask(
     return dockerBuildTask
 }
 
-private fun Project.registerPrepareBuildDockerTask(profile: ValidatedDeployProfile): String {
+private fun Project.registerHelmPushTask(
+    profile: ValidatedHelmPushProfile,
+    serviceName: String,
+    taskSuffix: String,
+): String {
+    val task = "pushChart$taskSuffix${serviceName.capitalize()}"
+    tasks.register(task, HelmPushTask::class.java, serviceName).configure {
+        it.description = "Pushes the helmChart of $serviceName service."
+        it.group = "deploy"
+        it.helmDir = profile.helmDir
+        it.url = profile.repositoryUrl
+        it.password = profile.repositoryPassword
+        it.userName = profile.repositoryUserName
+    }
+
+    return task
+}
+
+private fun Project.registerPrepareBuildDockerTask(profile: ValidatedDockerBuildProfile, taskSuffix: String): String {
 
     val prepareTask = profile.prepareTask
 
-    if (prepareTask.isNotBlank()) {
-        return prepareTask
+    prepareTask?.let {
+        return it
     }
-    val prepareBuildDockerTask = "prepareBuildDocker${profile.taskSuffix()}"
+    val prepareBuildDockerTask = "prepareBuildDocker$taskSuffix"
     tasks.register(prepareBuildDockerTask, Copy::class.java) {
-        val workingDirectory = "${buildDir}/buildDocker"
+        val workingDirectory = "$buildDir/buildDocker"
         it.dependsOn("bootJar")
-        it.from("${buildDir}/libs") {
+        it.from("$buildDir/libs") {
             it.include("*.*")
         }
         it.from("src/docker") {
@@ -81,19 +116,31 @@ private fun Project.registerPrepareBuildDockerTask(profile: ValidatedDeployProfi
     return prepareBuildDockerTask
 }
 
-private fun Project.registerPushDockerTask(
-    profile: ValidatedDeployProfile,
+private fun Project.registerDockerPushTask(
+    profile: ValidatedDockerPushProfile,
     serviceName: String,
-    dockerLoginTask: String,
-    buildDockerTask: String
+    taskSuffix: String,
+    buildDockerTask: String,
 ): String {
-    val pushDockerTask = "pushDocker${profile.taskSuffix()}"
-    tasks.register(pushDockerTask, DockerPushTask::class.java) {
-        it.dependsOn(buildDockerTask, dockerLoginTask)
-        it.description = "Pushes the dockerImage of $serviceName service with profile ${profile.name}."
+    val loginTask = "dockerLogin$taskSuffix"
+    if (tasks.findByName(loginTask) == null) {
+        tasks.register(loginTask, DockerLoginTask::class.java) {
+            it.host = profile.registryRoot
+            it.loginMethod = profile.loginMethod
+            it.username = profile.loginUsername
+            it.password = profile.loginPassword
+            it.description =
+                "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
+                " ${profile.loginMethod}"
+            it.awsProfile = profile.awsProfile
+        }
+    }
+    val pushDockerTask = "pushDocker$taskSuffix${serviceName.capitalize()}"
+    tasks.register(pushDockerTask, DockerPushTask::class.java, serviceName).configure {
+        it.dependsOn(buildDockerTask, loginTask)
+        it.description = "Pushes the dockerImage of $serviceName service."
         it.group = "deploy"
-        it.serviceName = serviceName
-        it.registry = profile.dockerRegistryRoot
+        it.registry = profile.registryRoot
     }
     return pushDockerTask
 }
@@ -101,40 +148,55 @@ private fun Project.registerPushDockerTask(
 private fun Project.registerDeployTasks(
     profile: ValidatedDeployProfile,
     serviceName: String,
-    pushDockerTask: String,
+    taskSuffix: String,
+    pushDockerTask: String?,
 ): List<String> {
 
     return profile.targetNamespaces.map {
-        registerDeployInNamespaceTask(serviceName, profile, it, pushDockerTask)
+        registerDeployInNamespaceTask(profile, serviceName, it, pushDockerTask, taskSuffix)
     }.also {
-        registerProfileDeployTask(serviceName, profile, it)
+        registerProfileDeployTask(serviceName, taskSuffix, it)
     }
 }
 
-private fun Project.registerProfileDeployTask(serviceName: String,
-    profile: ValidatedDeployProfile,
-    deployTasks: List<String>) {
-    tasks.register("deploy${serviceName.capitalize()}${profile.taskSuffix()}") {
+private fun Project.registerProfileDeployTask(
+    serviceName: String,
+    taskSuffix: String,
+    deployTasks: List<String>
+) {
+    tasks.register("deploy${serviceName.capitalize()}$taskSuffix") {
         it.dependsOn(deployTasks)
     }
 }
 
-private fun Project.registerDeployInNamespaceTask(serviceName: String,
+private fun Project.registerDeployInNamespaceTask(
     profile: ValidatedDeployProfile,
+    serviceName: String,
     namespace: String,
-    pushDockerTask: String): String {
-    val namespaceDeployTask = "deploy${serviceName.capitalize()}${profile.taskSuffix()}${namespace.capitalize()}"
+    pushDockerTask: String?,
+    taskSuffix: String
+): String {
+    val namespaceDeployTask = "deploy${serviceName.capitalize()}${taskSuffix}${namespace.capitalize()}"
+    val pushedTagFile = if (pushDockerTask != null) {
+        project.dockerPushedTagFile()
+    } else {
+        null
+    }
     tasks.register(
         namespaceDeployTask,
-        DeployTask::class.java
-    ) {
+        DeployTask::class.java, serviceName, pushedTagFile
+    ).configure {
         it.description =
-            "Builds and deploys the $serviceName service in namespace: $namespace on profile: ${profile.name}."
+            "Builds and deploys the $serviceName service in namespace: $namespace ."
         it.group = "deploy"
-        it.dependsOn(pushDockerTask)
-        it.serviceName = serviceName
-        it.validatedDeployProfile = profile
+        if (pushDockerTask != null) {
+            it.dependsOn(pushDockerTask)
+        }
+        it.attributes = profile.attributes
+        it.helmDir = profile.helmDir
+        it.kubeConfig = profile.kubeConfig
         it.targetNamespace = namespace
+        it.skipLayerCheck = profile.skipLayerCheck
     }
     namespaceDeploymentTaskInRootProject(namespace).dependsOn(tasks.findByPath(namespaceDeployTask)!!.path)
     return namespaceDeployTask

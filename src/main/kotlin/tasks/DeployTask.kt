@@ -1,84 +1,111 @@
 package net.mayope.deployplugin.tasks
 
-import net.mayope.deployplugin.ValidatedDeployProfile
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
+import javax.inject.Inject
 
-open class DeployTask : DefaultTask() {
-
-    @Input
-    var validatedDeployProfile: ValidatedDeployProfile? = null
+abstract class DeployTask @Inject constructor(
+    @Input val serviceName: String,
+    @Input @Optional val pushedTagFile: String? = null,
+) :
+    DefaultTask() {
 
     @Input
     var targetNamespace: String = ""
 
     @Input
-    var serviceName: String = ""
+    @Optional
+    var kubeConfig: String? = null
 
     @Input
     @Optional
-    var ownDockerImage: Boolean = true
+    var skipLayerCheck: Boolean? = null
+
+    @Input
+    @Optional
+    var attributes: Map<String, String> = emptyMap()
 
     @InputDirectory
     var helmDir: String = "src/helm"
 
+    init {
+        if (pushedTagFile != null) {
+            inputs.file(project.dockerVersionFile())
+            inputs.file(project.dockerPushedTagFile())
+            inputs.file(project.dockerPushedRepoFile())
+        }
+    }
+
     @Suppress("TooGenericExceptionCaught")
-    private fun Project.queryRemoteVersion(profile: ValidatedDeployProfile,release: String, environment: String): String? {
+    private fun Project.queryRemoteTag(release: String, environment: String): String? {
         return try {
-            command(
-                listOf("helm", "get", "-n", environment, "values", release),
-                environment = kubeconfigEnv(profile)
-            )
-                .lines()
+            val values = command(
+                listOf("helm", "get", "-n", environment, "values", release, "-a"),
+                environment = kubeconfigEnv()
+            ).lines()
                 .map { it.trim() }
-                .firstOrNull { it.startsWith("version:") }
+            val tag = values.firstOrNull { it.startsWith("version:") }
                 ?.substring("version: ".length)
+            val repository = values.firstOrNull { it.startsWith("repository:") }
+                ?.substring("repository: ".length)
+            "$repository:$tag"
         } catch (e: Throwable) {
             println(e)
             null
         }
     }
 
-    private fun kubeconfigEnv(profile: ValidatedDeployProfile) = profile.kubeConfig?.let {
+    private fun kubeconfigEnv() = kubeConfig?.let {
         mapOf("KUBECONFIG" to it)
-    }?: emptyMap()
+    } ?: emptyMap()
 
     @SuppressWarnings("SpreadOperator")
     private fun Project.deployForEnvironment(
-        profile: ValidatedDeployProfile,
         serviceName: String,
         namespace: String,
     ) {
-        if (ownDockerImage) {
+        if (pushedTagFile != null) {
             val appVersion = file(dockerVersionFile()).readText()
+            val appRepo = file(dockerPushedRepoFile()).readText()
 
-            val registry = profile.dockerRegistryRoot
-            val tag = "$registry/$serviceName:$appVersion"
-            val remoteVersion = queryRemoteVersion(profile,serviceName, namespace)
-            val remoteTag = "$registry/$serviceName:$remoteVersion"
+            val tag = file(pushedTagFile).readText(Charsets.UTF_8)
+            val remoteTag = queryRemoteTag(serviceName, namespace) ?: ""
 
-            println("Deploying chart: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
+            println("Deploying chart: $serviceName, currentVersion: $remoteTag in environment: $namespace")
 
-            val attributesWithImageVersion = findVersionToDeploy(tag, remoteTag, remoteVersion, appVersion).let {
-                println("Deploying version: $it of image: $serviceName")
-                profile.attributes.plus(mapOf("image.version" to it))
-            }
-            upgradeChart(profile, attributesWithImageVersion, serviceName, namespace)
-
+            val attributesWithImageVersion = addImageVersion(tag, remoteTag, appVersion, serviceName, appRepo)
+            upgradeChart(attributesWithImageVersion, serviceName, namespace)
         } else {
-            upgradeChart(profile, profile.attributes, serviceName, namespace)
+            upgradeChart(attributes, serviceName, namespace)
         }
     }
 
+    private fun Project.addImageVersion(
+        tag: String,
+        remoteTag: String,
+        appVersion: String,
+        serviceName: String,
+        appRepo: String
+    ): Map<String, String> {
+        if (skipLayerCheck == true) {
+            return attributes.plus(mapOf("image.version" to appVersion, "image.repository" to appRepo))
+        }
+        return findVersionToDeploy(tag, remoteTag, remoteTag, appVersion).let {
+            println("Deploying version: $it of image: $serviceName")
+            attributes.plus(mapOf("image.version" to it, "image.repository" to appRepo))
+        }
+    }
+
+    @Suppress("SpreadOperator")
     private fun Project.upgradeChart(
-        profile: ValidatedDeployProfile,
         attributes: Map<String, String>,
         chartName: String,
-        namespace: String) {
+        namespace: String
+    ) {
         val helmAttributes = attributes.entries.map { "${it.key}=${it.value}" }.joinToString(",")
         val args = arrayOf(
             "helm", "upgrade", "--install", chartName, ".", "--set",
@@ -87,19 +114,16 @@ open class DeployTask : DefaultTask() {
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
         exec {
-            it.environment(kubeconfigEnv(profile))
+            it.environment(kubeconfigEnv())
             it.workingDir(helmDir)
             it.commandLine(*args)
         }
-        file(deployedChartFile(profile.name, namespace, chartName)).parentFile.mkdirs()
-        file(deployedChartFile(profile.name, namespace, chartName)).writeText(helmAttributes)
+        file(deployedChartFile(serviceName, namespace, chartName)).parentFile.mkdirs()
+        file(deployedChartFile(serviceName, namespace, chartName)).writeText(helmAttributes)
     }
-
 
     @TaskAction
     fun deploy() {
-        project.deployForEnvironment(
-            validatedDeployProfile ?: error("DeployProfile must be set nonnull"), serviceName, targetNamespace
-        )
+        project.deployForEnvironment(serviceName, targetNamespace)
     }
 }

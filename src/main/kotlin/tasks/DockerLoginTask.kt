@@ -12,11 +12,13 @@ import java.time.temporal.ChronoUnit
 enum class DockerLoginMethod {
     CLASSIC, AWS;
 
-    fun login(project: Project,
+    fun login(
+        project: Project,
         host: String,
         username: String,
         password: String,
-        awsProfile: String? = null): String {
+        awsProfile: String? = null
+    ): String {
         return when (this) {
             CLASSIC -> project.classicLogin(host, username, password)
             AWS -> project.awsLogin(host, awsProfile)

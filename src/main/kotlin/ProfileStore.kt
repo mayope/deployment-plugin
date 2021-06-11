@@ -1,38 +1,86 @@
 package net.mayope.deployplugin
 
-import net.mayope.deployplugin.tasks.DockerLoginMethod
+import org.gradle.api.Project
 
 internal class ProfileStore {
-    private val profileMap = mutableMapOf<String, DeployProfile>()
+    fun init(project: Project) {
+        addProfiles(
+            project.defaultExtension().deploymentProfiles(), project.extension()?.profiles ?: emptyList()
+        )
+    }
 
-    fun addProfiles(defaultProfiles: List<DeployProfile>, profiles: List<DeployProfile>) {
+    private val profileMap = mutableMapOf<String, Profile>()
 
-        defaultProfiles.forEach {
-            addProfile(it)
-        }
+    fun addProfiles(defaultProfiles: List<Profile>, profiles: List<Profile>) {
         profiles.forEach {
-            addProfile(it)
+            profileMap[it.name] = it
+        }
+        defaultProfiles.forEach {
+            fillMissingProperties(it)
         }
     }
 
-    fun profiles() = profileMap.values.map { ValidatedDeployProfile(it) }
+    fun profiles() = profileMap.values.map { ValidatedProfile(it) }
 
-    private fun addProfile(profile: DeployProfile) {
+    private fun fillMissingProperties(profile: Profile) {
         if (profile.name !in profileMap) {
-            profileMap[profile.name] = DeployProfile(profile.name)
+            return
         }
         profileMap[profile.name]!!.let {
-            it.awsProfile = profile.awsProfile ?: it.awsProfile
-            it.kubeConfig = profile.kubeConfig ?: it.kubeConfig
-            it.dockerRegistryRoot = profile.dockerRegistryRoot ?: it.dockerRegistryRoot
-            it.dockerLoginMethod =
-                profile.dockerLoginMethod ?: it.dockerLoginMethod ?: DockerLoginMethod.CLASSIC
-            it.dockerLoginUsername = profile.dockerLoginUsername ?: it.dockerLoginUsername
-            it.dockerLoginPassword = profile.dockerLoginPassword ?: it.dockerLoginPassword
-            it.targetNamespaces = profile.targetNamespaces ?: it.targetNamespaces
-            it.prepareTask = profile.prepareTask ?: it.prepareTask
-            it.attributes = it.attributes.plus(profile.attributes)
+            configureProfile(it, profile)
         }
+    }
 
+    private fun configureProfile(existing: Profile, profile: Profile) {
+        existing.deploy?.apply {
+            configureDeploy(profile)
+        }
+        existing.dockerBuild?.apply {
+            prepareTask = profile.dockerBuild?.prepareTask ?: prepareTask
+        }
+        existing.helmPush?.apply {
+            configureHelmPush(profile)
+        }
+        existing.dockerLogin?.apply {
+            configureDockerLogin(profile)
+        }
+        existing.dockerPush?.apply {
+            configureDockerPush(profile)
+        }
+    }
+
+    private fun DockerPushProfile.configureDockerPush(profile: Profile) {
+        awsProfile = awsProfile ?: profile.dockerPush?.awsProfile
+        loginMethod = loginMethod ?: profile.dockerPush?.loginMethod
+        registryRoot = registryRoot ?: profile.dockerPush?.registryRoot
+        loginUsername = loginUsername ?: profile.dockerPush?.loginUsername
+        loginPassword = loginPassword ?: profile.dockerPush?.loginPassword
+    }
+
+    private fun DockerLoginProfile.configureDockerLogin(profile: Profile) {
+        awsProfile = awsProfile ?: profile.dockerPush?.awsProfile
+        loginMethod = loginMethod ?: profile.dockerPush?.loginMethod
+        registryRoot = registryRoot ?: profile.dockerPush?.registryRoot
+        loginUsername = loginUsername ?: profile.dockerPush?.loginUsername
+        loginPassword = loginPassword ?: profile.dockerPush?.loginPassword
+    }
+
+    private fun DeployProfile.configureDeploy(profile: Profile) {
+        attributes = attributes ?: profile.deploy?.attributes
+        helmDir = helmDir ?: profile.deploy?.helmDir
+        kubeConfig = kubeConfig ?: profile.deploy?.kubeConfig
+        targetNamespaces = targetNamespaces ?: profile.deploy?.targetNamespaces
+    }
+
+    private fun HelmPushProfile.configureHelmPush(profile: Profile) {
+        helmDir = helmDir ?: profile.helmPush?.helmDir
+        repositoryUrl = repositoryUrl ?: profile.helmPush?.repositoryUrl
+        repositoryUsername = repositoryUsername ?: profile.helmPush?.repositoryUsername
+        repositoryPassword = repositoryPassword ?: profile.helmPush?.repositoryPassword
     }
 }
+
+private fun Project.extension() = extensions.findByType(DeployExtension::class.java)
+
+private fun Project.defaultExtension() =
+    rootProject.extensions.findByType(DefaultDeployExtension::class.java) ?: DefaultDeployExtension()
