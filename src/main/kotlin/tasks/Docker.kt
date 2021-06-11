@@ -16,7 +16,7 @@ internal fun tag(registry: String, serviceName: String, version: String) = if (r
 // docker file outputs:
 internal fun Project.dockerVersionFile() = "$buildDir/deploy/docker_version"
 internal fun Project.dockerTagFile() = "$buildDir/deploy/build_docker_tag"
-internal fun Project.dockerNameFile() = "$buildDir/deploy/build_docker_tag"
+internal fun Project.dockerNameFile() = "$buildDir/deploy/build_docker_name"
 internal fun Project.dockerPushedTagFile() = "$buildDir/deploy/pushed_docker_tag"
 internal fun Project.dockerPushedRepoFile() = "$buildDir/deploy/pushed_docker_repo"
 internal fun Project.pushedChartVersion(chartName: String) =
