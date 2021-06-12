@@ -52,7 +52,7 @@ deploy {
           kubeConfig = System.getProperty("user.home")+"/.kube/config" // default null, not set
        }
        helmPush {
-            version = "0.0.1" //if not set gradle project version is used
+            version = "0.0.1" //if not set chart version is used
             repositoryUrl = "https://charts.example.net"
             repositoryUsername = "username"
             repositoryPassword = "123456"
