@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import javax.inject.Inject
 
@@ -13,13 +14,16 @@ abstract class HelmPushTask @Inject constructor(@Input val serviceName: String) 
     @Input
     var url: String = ""
 
+    @Optional
     @Input
     var userName: String? = null
 
+    @Optional
     @Input
     var password: String? = null
 
     @Input
+    @Optional
     var chartVersion: String? = null
 
     @InputDirectory

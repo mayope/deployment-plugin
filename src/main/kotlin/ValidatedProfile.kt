@@ -40,6 +40,7 @@ open class ValidatedHelmPushProfile(profile: HelmPushProfile) {
         profile.repositoryUrl ?: error("HelmRepository url has to be set for helmPush")
     val repositoryUserName: String = profile.repositoryUsername ?: ""
     val repositoryPassword: String = profile.repositoryPassword ?: ""
+    val version: String? = null
 }
 
 open class ValidatedProfile(profile: Profile) {

@@ -46,7 +46,7 @@ private fun Project.registerLoginTask(
         it.password = profile.loginPassword
         it.description =
             "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-            " ${profile.loginMethod}"
+                    " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
@@ -89,6 +89,7 @@ private fun Project.registerHelmPushTask(
         it.url = profile.repositoryUrl
         it.password = profile.repositoryPassword
         it.userName = profile.repositoryUserName
+        it.chartVersion = profile.version
     }
 
     return task
@@ -131,7 +132,7 @@ private fun Project.registerDockerPushTask(
             it.password = profile.loginPassword
             it.description =
                 "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                " ${profile.loginMethod}"
+                        " ${profile.loginMethod}"
             it.awsProfile = profile.awsProfile
         }
     }

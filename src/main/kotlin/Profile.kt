@@ -29,6 +29,7 @@ open class HelmPushProfile {
     var repositoryUrl: String? = null
     var repositoryUsername: String? = null
     var repositoryPassword: String? = null
+    var version: String? = null
 }
 
 open class DockerLoginProfile {
