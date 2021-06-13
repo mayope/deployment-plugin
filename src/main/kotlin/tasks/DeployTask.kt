@@ -1,11 +1,14 @@
 package net.mayope.deployplugin.tasks
 
+import com.beust.klaxon.JsonObject
+import com.beust.klaxon.Parser
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
+import java.io.ByteArrayInputStream
 import javax.inject.Inject
 
 abstract class DeployTask @Inject constructor(
@@ -44,15 +47,14 @@ abstract class DeployTask @Inject constructor(
     private fun Project.queryRemoteTag(release: String, environment: String): String? {
         return try {
             val values = command(
-                listOf("helm", "get", "-n", environment, "values", release, "-a"),
+                listOf("helm", "get", "-n", environment, "values", release, "-a", "-o", "json"),
                 environment = kubeconfigEnv()
-            ).lines()
-                .map { it.trim() }
-            val tag = values.firstOrNull { it.startsWith("version:") }
-                ?.substring("version: ".length)
-            val repository = values.firstOrNull { it.startsWith("repository:") }
-                ?.substring("repository: ".length)
-            "$repository:$tag"
+            ).let {
+                Parser.default().parse(ByteArrayInputStream(it.toByteArray())) as JsonObject
+            }.obj("image") ?: error("deployed image not found in json")
+            val version = values.string("version") ?: error("image version not found in json")
+            val repository = values.string("repository") ?: error("image repository not found in json")
+            "$repository:$version"
         } catch (e: Throwable) {
             println(e)
             null
@@ -68,6 +70,7 @@ abstract class DeployTask @Inject constructor(
         serviceName: String,
         namespace: String,
     ) {
+        updateHelmDependencies()
         if (pushedTagFile != null) {
             val appVersion = file(dockerVersionFile()).readText()
             val appRepo = file(dockerPushedRepoFile()).readText()
@@ -97,6 +100,17 @@ abstract class DeployTask @Inject constructor(
         return findVersionToDeploy(tag, remoteTag, remoteTag, appVersion).let {
             println("Deploying version: $it of image: $serviceName")
             attributes.plus(mapOf("image.version" to it, "image.repository" to appRepo))
+        }
+    }
+
+    private fun Project.updateHelmDependencies() {
+
+        logger.info("Updating helm dependencies")
+
+        exec {
+            it.environment(kubeconfigEnv())
+            it.workingDir(helmDir)
+            it.commandLine("helm", "dependency", "update")
         }
     }
 
