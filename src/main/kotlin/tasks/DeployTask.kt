@@ -44,7 +44,7 @@ abstract class DeployTask @Inject constructor(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    private fun Project.queryRemoteTag(release: String, environment: String): String? {
+    private fun Project.queryRemoteTag(release: String, environment: String): Pair<String, String>? {
         return try {
             val values = command(
                 listOf("helm", "get", "-n", environment, "values", release, "-a", "-o", "json"),
@@ -54,7 +54,7 @@ abstract class DeployTask @Inject constructor(
             }.obj("image") ?: error("deployed image not found in json")
             val version = values.string("version") ?: error("image version not found in json")
             val repository = values.string("repository") ?: error("image repository not found in json")
-            "$repository:$version"
+            repository to version
         } catch (e: Throwable) {
             println(e)
             null
@@ -76,11 +76,14 @@ abstract class DeployTask @Inject constructor(
             val appRepo = file(dockerPushedRepoFile()).readText()
 
             val tag = file(pushedTagFile).readText(Charsets.UTF_8)
-            val remoteTag = queryRemoteTag(serviceName, namespace) ?: ""
+            val (remoteRepository, remoteVersion) = queryRemoteTag(serviceName, namespace) ?: "" to ""
 
-            println("Deploying chart: $serviceName, currentVersion: $remoteTag in environment: $namespace")
+            println("Deploying chart: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
 
-            val attributesWithImageVersion = addImageVersion(tag, remoteTag, appVersion, serviceName, appRepo)
+            val attributesWithImageVersion =
+                addImageVersion(
+                    tag, "$remoteRepository:$remoteVersion", remoteVersion, appVersion, serviceName, appRepo
+                )
             upgradeChart(attributesWithImageVersion, serviceName, namespace)
         } else {
             upgradeChart(attributes, serviceName, namespace)
@@ -90,6 +93,7 @@ abstract class DeployTask @Inject constructor(
     private fun Project.addImageVersion(
         tag: String,
         remoteTag: String,
+        remoteVersion: String,
         appVersion: String,
         serviceName: String,
         appRepo: String
@@ -97,7 +101,7 @@ abstract class DeployTask @Inject constructor(
         if (skipLayerCheck == true) {
             return attributes.plus(mapOf("image.version" to appVersion, "image.repository" to appRepo))
         }
-        return findVersionToDeploy(tag, remoteTag, remoteTag, appVersion).let {
+        return findVersionToDeploy(tag, remoteTag, remoteVersion, appVersion).let {
             println("Deploying version: $it of image: $serviceName")
             attributes.plus(mapOf("image.version" to it, "image.repository" to appRepo))
         }
