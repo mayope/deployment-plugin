@@ -125,11 +125,15 @@ deployDefault {
 ## Docker Login Methods
 
 Currently, two login methods are available.
+### DOCKERHUB
+
+This method uses the `docker login` command with username and password. You have to provide the
+parameters `loginUserName` and `loginPassword`.
 
 ### CLASSIC
 
-This method uses the `docker login` command with username and password. You have to provide the
-parameters `dockerLoginUserName` and `dockerLoginPassword`.
+This method uses the `docker login` command with host set to `registryRoot`, username and password. You have to provide the
+parameters `loginUserName` and `loginPassword`.
 
 ### AWS
 
