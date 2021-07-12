@@ -36,7 +36,7 @@ internal class ProfileStore {
             configureDeploy(profile)
         }
         existing.dockerBuild?.apply {
-            prepareTask = profile.dockerBuild?.prepareTask ?: prepareTask
+            configureDockerBuild(profile)
         }
         existing.helmPush?.apply {
             configureHelmPush(profile)
@@ -47,6 +47,13 @@ internal class ProfileStore {
         existing.dockerPush?.apply {
             configureDockerPush(profile)
         }
+    }
+
+    private fun DockerBuildProfile.configureDockerBuild(profile: Profile) {
+        prepareTask = profile.dockerBuild?.prepareTask ?: prepareTask
+        dockerDir = dockerDir ?: profile.dockerBuild?.dockerDir
+        version = version ?: profile.dockerBuild?.version
+        buildOutputTask = buildOutputTask ?: profile.dockerBuild?.buildOutputTask
     }
 
     private fun DockerPushProfile.configureDockerPush(profile: Profile) {

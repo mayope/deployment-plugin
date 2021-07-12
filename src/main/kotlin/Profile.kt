@@ -12,6 +12,7 @@ open class DeployProfile {
 
 open class DockerBuildProfile {
     var prepareTask: String? = null
+    var buildOutputTask: String? = null
     var version: String? = null
     var dockerDir: String? = null
 }

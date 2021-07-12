@@ -10,7 +10,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 enum class DockerLoginMethod {
-    CLASSIC, AWS;
+    CLASSIC, AWS, DOCKERHUB;
 
     fun login(
         project: Project,
@@ -22,6 +22,7 @@ enum class DockerLoginMethod {
         return when (this) {
             CLASSIC -> project.classicLogin(host, username, password)
             AWS -> project.awsLogin(host, awsProfile)
+            DOCKERHUB->project.hubLogin(username,password)
         }
     }
 
@@ -31,6 +32,16 @@ enum class DockerLoginMethod {
         }
         exec {
             it.commandLine(listOf("docker", "login", host, "--username", username, "-p", password))
+        }
+        return "logged in"
+    }
+
+    fun Project.hubLogin(username: String, password: String): String {
+        if (username.isBlank() || password.isBlank() ) {
+            error("You have to configure, username and password for dockerhub login")
+        }
+        exec {
+            it.commandLine(listOf("docker", "login", "--username", username, "-p", password))
         }
         return "logged in"
     }
