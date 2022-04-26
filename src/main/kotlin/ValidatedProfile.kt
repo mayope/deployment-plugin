@@ -1,11 +1,18 @@
 package net.mayope.deployplugin
 
 import net.mayope.deployplugin.tasks.DockerLoginMethod
+import net.mayope.deployplugin.tasks.VulnerabilitySeverity
 
 open class ValidatedDockerBuildProfile(profile: DockerBuildProfile) {
     val prepareTask: String? = profile.prepareTask
     val version: String? = profile.version
     val dockerDir: String? = profile.dockerDir
+}
+
+open class ValidatedDockerScanProfile(profile: DockerSecurityScanProfile) {
+    val dockerDir: String? = profile.dockerDir
+    val failOnThreshold: VulnerabilitySeverity = profile.failOnThreshold ?: VulnerabilitySeverity.HIGH
+    val ignoreFilePath: String? = profile.ignoreFilePath
 }
 
 open class ValidatedDockerPushProfile(profile: DockerPushProfile) {
@@ -47,6 +54,9 @@ open class ValidatedProfile(profile: Profile) {
     val name = profile.name
     val dockerBuild = profile.dockerBuild?.let {
         ValidatedDockerBuildProfile(it)
+    }
+    val dockerScan = profile.dockerScan?.let {
+        ValidatedDockerScanProfile(it)
     }
     val deploy = profile.deploy?.let {
         ValidatedDeployProfile(it)
