@@ -41,7 +41,7 @@ deploy {
        }
        dockerScan {
           failOnThreshold = "CRITICAL" //when not set build failes with high vulnerabilities 
-          ignoreFilePat = "path/to/ignore/file" //if not set the grype.yaml is expected in the project dir 
+          ignoreFilePath = "path/to/ignore/file" //if not set the grype.yaml is expected in the project dir 
        }
        dockerPush {
           registryRoot = "registry.mayope.net" // docker registry to use
@@ -72,8 +72,8 @@ It should place all files needed for the docker build to the directory `build/bu
 The docker image is built in the directory `build/buildDocker` and tagged with `{serviceName}:{timestamp}`
 
 ### dockerScan 
-Uses [grype](https://github.com/anchore/grype) to scan the built Docker images.
-The step is not needed. It is recommended to check out the docs of grype.
+Uses grype to scan the built Docker images.
+The step is not needed. For further information check: <https://github.com/anchore/grype>.
 
 #### dockerPush
 

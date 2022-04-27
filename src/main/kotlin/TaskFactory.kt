@@ -99,10 +99,6 @@ private fun Project.registerDockerScanTask(
         it.serviceName = serviceName
         it.dependsOn(dockerBuildTask)
     }
-
-    tasks.named("scan") {
-        it.dependsOn(dockerScanTask)
-    }
     return dockerScanTask
 }
 

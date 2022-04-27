@@ -25,6 +25,9 @@ internal fun Project.pushedChartVersion(chartName: String) =
 internal fun Project.deployedChartFile(serviceName: String, namespace: String, chartName: String) =
     "$buildDir/deploy/${chartName}_${serviceName}_${namespace}_deployed_chart_values"
 
+// grype scan output
+internal fun Project.securityScanFile() = "$buildDir/scan/scan_report"
+
 internal fun Project.command(
     cmd: List<String>,
     workingDirectory: String = ".",
