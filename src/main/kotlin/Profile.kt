@@ -1,6 +1,7 @@
 package net.mayope.deployplugin
 
 import net.mayope.deployplugin.tasks.DockerLoginMethod
+import net.mayope.deployplugin.tasks.VulnerabilitySeverity
 
 open class DeployProfile {
     var helmDir: String? = null
@@ -15,6 +16,12 @@ open class DockerBuildProfile {
     var buildOutputTask: String? = null
     var version: String? = null
     var dockerDir: String? = null
+}
+
+open class DockerSecurityScanProfile {
+    var dockerDir: String? = null
+    var failOnThreshold: VulnerabilitySeverity? = null
+    var ignoreFilePath: String? = null
 }
 
 open class DockerPushProfile {
@@ -44,6 +51,7 @@ open class DockerLoginProfile {
 open class Profile(val name: String) {
     internal var deploy: DeployProfile? = null
     internal var dockerBuild: DockerBuildProfile? = null
+    internal var dockerScan: DockerSecurityScanProfile? = null
     internal var dockerPush: DockerPushProfile? = null
     internal var helmPush: HelmPushProfile? = null
     internal var dockerLogin: DockerLoginProfile? = null
@@ -56,6 +64,12 @@ open class Profile(val name: String) {
 
     fun dockerBuild(receiver: DockerBuildProfile.() -> Unit = {}) {
         dockerBuild = DockerBuildProfile().apply {
+            receiver()
+        }
+    }
+
+    fun dockerScan(receiver: DockerSecurityScanProfile.() -> Unit = {}) {
+        dockerScan = DockerSecurityScanProfile().apply{
             receiver()
         }
     }

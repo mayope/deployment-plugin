@@ -38,6 +38,9 @@ internal class ProfileStore {
         existing.dockerBuild?.apply {
             configureDockerBuild(profile)
         }
+        existing.dockerScan?.apply {
+            configureDockerScan(profile)
+        }
         existing.helmPush?.apply {
             configureHelmPush(profile)
         }
@@ -84,6 +87,11 @@ internal class ProfileStore {
         repositoryUrl = repositoryUrl ?: profile.helmPush?.repositoryUrl
         repositoryUsername = repositoryUsername ?: profile.helmPush?.repositoryUsername
         repositoryPassword = repositoryPassword ?: profile.helmPush?.repositoryPassword
+    }
+
+    private fun DockerSecurityScanProfile.configureDockerScan(profile: Profile) {
+        failOnThreshold = failOnThreshold ?: profile.dockerScan?.failOnThreshold
+        ignoreFilePath = ignoreFilePath ?: profile.dockerScan?.ignoreFilePath
     }
 }
 

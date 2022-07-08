@@ -2,6 +2,7 @@ package net.mayope.deployplugin
 
 import net.mayope.deployplugin.tasks.DeployTask
 import net.mayope.deployplugin.tasks.DockerBuildTask
+import net.mayope.deployplugin.tasks.DockerGrypeScanTask
 import net.mayope.deployplugin.tasks.DockerLoginTask
 import net.mayope.deployplugin.tasks.DockerPushTask
 import net.mayope.deployplugin.tasks.HelmPushTask
@@ -16,6 +17,12 @@ internal fun Project.registerTasksForProfile(profile: ValidatedProfile, serviceN
     }
     val buildDockerTask = profile.dockerBuild?.let {
         registerDockerBuildTask(it, serviceName, profile.taskSuffix())
+    }
+    val dockerScanTask = profile.dockerScan?.let {
+        if (buildDockerTask == null) {
+            error("Docker Scan needs a dockerBuild first")
+        }
+        registerDockerScanTask(it, buildDockerTask, serviceName, profile.taskSuffix())
     }
     val pushDockerTask = profile.dockerPush?.let {
         if (buildDockerTask == null) {
@@ -46,7 +53,7 @@ private fun Project.registerLoginTask(
         it.password = profile.loginPassword
         it.description =
             "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                    " ${profile.loginMethod}"
+                " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
@@ -74,6 +81,25 @@ private fun Project.registerDockerBuildTask(
         it.dependsOn(dockerBuildTask)
     }
     return dockerBuildTask
+}
+
+private fun Project.registerDockerScanTask(
+    profile: ValidatedDockerScanProfile,
+    dockerBuildTask: String,
+    serviceName: String,
+    taskSuffix: String
+): String {
+    val dockerScanTask = "dockerScan$taskSuffix${serviceName.capitalize()}"
+    tasks.register(dockerScanTask, DockerGrypeScanTask::class.java) {
+        it.failOnThreshold = profile.failOnThreshold
+        if (profile.dockerDir != null) {
+            it.buildDockerDir = profile.dockerDir
+        }
+        it.ignoreFilePath = profile.ignoreFilePath
+        it.serviceName = serviceName
+        it.dependsOn(dockerBuildTask)
+    }
+    return dockerScanTask
 }
 
 private fun Project.registerHelmPushTask(
@@ -132,7 +158,7 @@ private fun Project.registerDockerPushTask(
             it.password = profile.loginPassword
             it.description =
                 "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                        " ${profile.loginMethod}"
+                    " ${profile.loginMethod}"
             it.awsProfile = profile.awsProfile
         }
     }

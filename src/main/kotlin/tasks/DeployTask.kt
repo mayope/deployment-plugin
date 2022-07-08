@@ -92,7 +92,7 @@ abstract class DeployTask @Inject constructor(
             upgradeChart(attributes, serviceName, namespace)
         }
     }
-
+    @Suppress("LongParameterList")
     private fun Project.addImageVersion(
         tag: String,
         remoteTag: String,

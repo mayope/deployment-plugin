@@ -39,6 +39,10 @@ deploy {
           prepareTask = "prepareBuildDocker" // task the copies all needed files to build/buildDocker
           version = "0.0.1" // if not set gradle project version "-$timestamp" is used
        }
+       dockerScan {
+          failOnThreshold = "CRITICAL" //when not set build failes with high vulnerabilities 
+          ignoreFilePath = "path/to/ignore/file" //if not set the grype.yaml is expected in the project dir 
+       }
        dockerPush {
           registryRoot = "registry.mayope.net" // docker registry to use
           loginUsername = "username" // username for the docker registry, needed on login method classic
@@ -66,6 +70,10 @@ deploy {
 Execute the `prepareDockerBuild` task which you have to configure.   
 It should place all files needed for the docker build to the directory `build/buildDocker`.  
 The docker image is built in the directory `build/buildDocker` and tagged with `{serviceName}:{timestamp}`
+
+### dockerScan 
+Uses grype to scan the built Docker images.
+The step is not needed. For further information check: <https://github.com/anchore/grype>.
 
 #### dockerPush
 
