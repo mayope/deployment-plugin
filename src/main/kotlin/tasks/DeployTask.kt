@@ -13,12 +13,15 @@ import javax.inject.Inject
 
 abstract class DeployTask @Inject constructor(
     @Input val serviceName: String,
-    @Input @Optional val pushedTagFile: String? = null,
 ) :
     DefaultTask() {
 
     @Input
     var targetNamespace: String = ""
+
+    @Input
+    @Optional
+    var pushedTagFile: String? = null
 
     @Input
     @Optional
@@ -125,10 +128,16 @@ abstract class DeployTask @Inject constructor(
         namespace: String
     ) {
         val helmAttributes = attributes.entries.map { "${it.key}=${it.value}" }.joinToString(",")
-        val args = arrayOf(
-            "helm", "upgrade", "--install", chartName, ".", "--set",
-            helmAttributes, "-n", namespace
-        )
+        val args = if (helmAttributes.isNotEmpty()) {
+            arrayOf(
+                "helm", "upgrade", "--install", chartName, ".", "--set",
+                helmAttributes, "-n", namespace
+            )
+        } else {
+            arrayOf(
+                "helm", "upgrade", "--install", chartName, ".", "-n", namespace
+            )
+        }
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
         exec {

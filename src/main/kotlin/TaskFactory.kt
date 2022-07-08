@@ -185,8 +185,9 @@ private fun Project.registerDeployInNamespaceTask(
     }
     tasks.register(
         namespaceDeployTask,
-        DeployTask::class.java, serviceName, pushedTagFile
+        DeployTask::class.java, serviceName
     ).configure {
+        it.pushedTagFile=pushedTagFile
         it.description =
             "Builds and deploys the $serviceName service in namespace: $namespace ."
         it.group = "deploy"
