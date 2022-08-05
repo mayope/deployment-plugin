@@ -53,7 +53,7 @@ private fun Project.registerLoginTask(
         it.password = profile.loginPassword
         it.description =
             "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                " ${profile.loginMethod}"
+                    " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
@@ -95,7 +95,7 @@ private fun Project.registerDockerScanTask(
         if (profile.dockerDir != null) {
             it.buildDockerDir = profile.dockerDir
         }
-        it.ignoreFilePath = profile.ignoreFilePath
+        it.ignoreFilePath = profile.ignoreFilePath ?: it.ignoreFilePath
         it.serviceName = serviceName
         it.dependsOn(dockerBuildTask)
     }
@@ -158,7 +158,7 @@ private fun Project.registerDockerPushTask(
             it.password = profile.loginPassword
             it.description =
                 "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                    " ${profile.loginMethod}"
+                        " ${profile.loginMethod}"
             it.awsProfile = profile.awsProfile
         }
     }
@@ -213,7 +213,7 @@ private fun Project.registerDeployInNamespaceTask(
         namespaceDeployTask,
         DeployTask::class.java, serviceName
     ).configure {
-        it.pushedTagFile=pushedTagFile
+        it.pushedTagFile = pushedTagFile
         it.description =
             "Builds and deploys the $serviceName service in namespace: $namespace ."
         it.group = "deploy"

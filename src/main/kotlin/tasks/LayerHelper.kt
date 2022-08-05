@@ -44,7 +44,7 @@ fun Project.findVersionToDeploy(
     remoteVersion: String?,
     appVersion: String
 ): String {
-    return if (tagsHaveEqualLayers(tag, remoteTag) && remoteVersion != null) {
+    return if (tagsHaveEqualLayers(tag, remoteTag) && remoteVersion != null && remoteVersion != "latest") {
         logger.info("Local version has same layers, deploying existing version.")
         println("Deploying existing version: $appVersion")
         remoteVersion

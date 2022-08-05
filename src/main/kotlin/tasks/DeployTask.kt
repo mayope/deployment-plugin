@@ -127,11 +127,12 @@ abstract class DeployTask @Inject constructor(
         chartName: String,
         namespace: String
     ) {
-        val helmAttributes = attributes.entries.map { "${it.key}=${it.value}" }.joinToString(",")
+        val helmAttributes = attributes.entries.map { "${it.key}: ${it.value}" }.joinToString("\n")
+        file(deployedChartFile(serviceName, namespace, chartName)).writeText(helmAttributes)
         val args = if (helmAttributes.isNotEmpty()) {
             arrayOf(
-                "helm", "upgrade", "--install", chartName, ".", "--set",
-                helmAttributes, "-n", namespace
+                "helm", "upgrade", "--install", chartName, ".", "-f",
+                deployedChartFile(serviceName, namespace, chartName), "-n", namespace
             )
         } else {
             arrayOf(
@@ -146,7 +147,6 @@ abstract class DeployTask @Inject constructor(
             it.commandLine(*args)
         }
         file(deployedChartFile(serviceName, namespace, chartName)).parentFile.mkdirs()
-        file(deployedChartFile(serviceName, namespace, chartName)).writeText(helmAttributes)
     }
 
     @TaskAction
