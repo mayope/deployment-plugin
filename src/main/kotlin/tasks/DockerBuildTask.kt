@@ -32,7 +32,11 @@ open class DockerBuildTask : DefaultTask() {
         val tag = tag("", serviceName, appVersion)
         exec {
             it.workingDir(buildDockerDir)
-            it.commandLine("docker", "build", ".", "-t", tag, getPlatform())
+            if (architecture) {
+                it.commandLine("docker", "build", ".", "-t", tag, "--platform", architecture)
+            } else {
+                it.commandLine("docker", "build", ".", "-t", tag)
+            }
         }
         file(dockerTagFile()).writeText(tag)
         file(dockerVersionFile()).writeText(appVersion)
@@ -45,14 +49,6 @@ open class DockerBuildTask : DefaultTask() {
         }
         val timestamp = Instant.now().toEpochMilli()
         return "$version-$timestamp"
-    }
-
-    private fun Project.getPlatform(): String {
-        val platform = ""
-        if(architecture) {
-            platform = "--platform " + architecture
-        }
-        return platform
     }
 
     @TaskAction
