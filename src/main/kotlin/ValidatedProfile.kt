@@ -7,6 +7,7 @@ open class ValidatedDockerBuildProfile(profile: DockerBuildProfile) {
     val prepareTask: String? = profile.prepareTask
     val version: String? = profile.version
     val dockerDir: String? = profile.dockerDir
+    val architecture: String? = profile.architecture
 }
 
 open class ValidatedDockerScanProfile(profile: DockerSecurityScanProfile) {

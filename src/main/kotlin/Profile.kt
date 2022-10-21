@@ -16,6 +16,7 @@ open class DockerBuildProfile {
     var buildOutputTask: String? = null
     var version: String? = null
     var dockerDir: String? = null
+    var architecture: String? = null
 }
 
 open class DockerSecurityScanProfile {
