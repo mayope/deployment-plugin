@@ -2,6 +2,7 @@ package net.mayope.deployplugin
 
 import org.gradle.api.Project
 
+@Suppress("TooManyFunctions")
 internal class ProfileStore {
     fun init(project: Project) {
         addProfiles(

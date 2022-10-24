@@ -38,6 +38,7 @@ deploy {
        dockerBuild { 
           prepareTask = "prepareBuildDocker" // task the copies all needed files to build/buildDocker
           version = "0.0.1" // if not set gradle project version "-$timestamp" is used
+          architecture = "linux/amd64" // if not set docker default architecture is chosen
        }
        dockerScan {
           failOnThreshold = "CRITICAL" //when not set build failes with high vulnerabilities 
