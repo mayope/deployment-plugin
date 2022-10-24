@@ -16,6 +16,10 @@ open class DockerBuildTask : DefaultTask() {
     @Optional
     var versionOverride: String? = null
 
+    @Input
+    @Optional
+    var architecture: String? = null
+
     @InputDirectory
     var buildDockerDir: String = "${project.buildDir}/buildDocker"
 
@@ -28,7 +32,11 @@ open class DockerBuildTask : DefaultTask() {
         val tag = tag("", serviceName, appVersion)
         exec {
             it.workingDir(buildDockerDir)
-            it.commandLine("docker", "build", ".", "-t", tag)
+            if (architecture != null) {
+                it.commandLine("docker", "build", ".", "-t", tag, "--platform", architecture)
+            } else {
+                it.commandLine("docker", "build", ".", "-t", tag)
+            }
         }
         file(dockerTagFile()).writeText(tag)
         file(dockerVersionFile()).writeText(appVersion)

@@ -73,6 +73,9 @@ private fun Project.registerDockerBuildTask(
         if (profile.dockerDir != null) {
             it.buildDockerDir = profile.dockerDir
         }
+        if (profile.architecture != null) {
+            it.architecture = profile.architecture
+        }
         it.versionOverride = profile.version
         it.dependsOn(prepareTask)
     }
