@@ -32,7 +32,7 @@ open class DockerBuildTask : DefaultTask() {
         val tag = tag("", serviceName, appVersion)
         exec {
             it.workingDir(buildDockerDir)
-            if (architecture) {
+            if (architecture != null) {
                 it.commandLine("docker", "build", ".", "-t", tag, "--platform", architecture)
             } else {
                 it.commandLine("docker", "build", ".", "-t", tag)
