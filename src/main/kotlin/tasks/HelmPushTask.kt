@@ -45,7 +45,6 @@ abstract class HelmPushTask @Inject constructor(@Input val serviceName: String) 
                 "helmpush", ".", url, "-u", userName, "-p",
                 password, "-f",
             )
-
         }
         logger.info("Executing helmpush with: ${args.joinToString(" ")}")
 

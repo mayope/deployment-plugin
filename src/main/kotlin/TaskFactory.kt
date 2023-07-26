@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package net.mayope.deployplugin
 
 import net.mayope.deployplugin.tasks.DeployTask
@@ -53,7 +55,7 @@ private fun Project.registerLoginTask(
         it.password = profile.loginPassword
         it.description =
             "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                    " ${profile.loginMethod}"
+            " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
@@ -98,6 +100,7 @@ private fun Project.registerDockerScanTask(
         if (profile.dockerDir != null) {
             it.buildDockerDir = profile.dockerDir
         }
+        it.group = "build"
         it.ignoreFilePath = profile.ignoreFilePath ?: it.ignoreFilePath
         it.serviceName = serviceName
         it.dependsOn(dockerBuildTask)
@@ -161,7 +164,7 @@ private fun Project.registerDockerPushTask(
             it.password = profile.loginPassword
             it.description =
                 "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                        " ${profile.loginMethod}"
+                " ${profile.loginMethod}"
             it.awsProfile = profile.awsProfile
         }
     }

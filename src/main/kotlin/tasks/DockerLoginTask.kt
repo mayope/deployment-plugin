@@ -22,7 +22,7 @@ enum class DockerLoginMethod {
         return when (this) {
             CLASSIC -> project.classicLogin(host, username, password)
             AWS -> project.awsLogin(host, awsProfile)
-            DOCKERHUB->project.hubLogin(username,password)
+            DOCKERHUB -> project.hubLogin(username, password)
         }
     }
 
@@ -37,7 +37,7 @@ enum class DockerLoginMethod {
     }
 
     fun Project.hubLogin(username: String, password: String): String {
-        if (username.isBlank() || password.isBlank() ) {
+        if (username.isBlank() || password.isBlank()) {
             error("You have to configure, username and password for dockerhub login")
         }
         exec {

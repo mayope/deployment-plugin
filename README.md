@@ -72,7 +72,7 @@ Execute the `prepareDockerBuild` task which you have to configure.
 It should place all files needed for the docker build to the directory `build/buildDocker`.  
 The docker image is built in the directory `build/buildDocker` and tagged with `{serviceName}:{timestamp}`
 
-### dockerScan 
+#### dockerScan 
 Uses grype to scan the built Docker images.
 The step is not needed. For further information check: <https://github.com/anchore/grype>.
 

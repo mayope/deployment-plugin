@@ -70,7 +70,7 @@ open class Profile(val name: String) {
     }
 
     fun dockerScan(receiver: DockerSecurityScanProfile.() -> Unit = {}) {
-        dockerScan = DockerSecurityScanProfile().apply{
+        dockerScan = DockerSecurityScanProfile().apply {
             receiver()
         }
     }

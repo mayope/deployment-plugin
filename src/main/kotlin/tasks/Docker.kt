@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package net.mayope.deployplugin.tasks
 
 import org.gradle.api.Project
