@@ -36,7 +36,7 @@ open class DockerGrypeScanTask : DefaultTask() {
             exec {
                 it.workingDir(buildDockerDir)
                 it.commandLine(
-                    "docker", "run", "-it", "-v", "$buildDockerDir/$serviceName:/var/$serviceName",
+                    "docker", "run", "-t", "-v", "$buildDockerDir/$serviceName:/var/$serviceName",
                     "-v", "$ignoreFilePath/grype.yaml:/.grype.yaml", "anchore/grype:latest", "dir:/var/$serviceName",
                     "--fail-on", failOnThreshold.value
                 )

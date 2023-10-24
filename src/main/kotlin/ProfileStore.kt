@@ -12,7 +12,7 @@ internal class ProfileStore {
 
     private val profileMap = mutableMapOf<String, Profile>()
 
-    fun addProfiles(defaultProfiles: List<Profile>, profiles: List<Profile>) {
+    private fun addProfiles(defaultProfiles: List<Profile>, profiles: List<Profile>) {
         profiles.forEach {
             profileMap[it.name] = it
         }
@@ -33,24 +33,15 @@ internal class ProfileStore {
     }
 
     private fun configureProfile(existing: Profile, profile: Profile) {
-        existing.deploy?.apply {
-            configureDeploy(profile)
+        existing.deploy?.configureDeploy(profile)
+        existing.dockerBuild?.configureDockerBuild(profile)
+        existing.dockerScan?.configureDockerScan(profile)
+        existing.helmPush?.configureHelmPush(profile)
+        existing.dockerLogin?.configureDockerLogin(profile)
+        if (existing.dockerLogin == null && profile.dockerLogin != null) {
+            DockerLoginProfile().configureDockerLogin(profile)
         }
-        existing.dockerBuild?.apply {
-            configureDockerBuild(profile)
-        }
-        existing.dockerScan?.apply {
-            configureDockerScan(profile)
-        }
-        existing.helmPush?.apply {
-            configureHelmPush(profile)
-        }
-        existing.dockerLogin?.apply {
-            configureDockerLogin(profile)
-        }
-        existing.dockerPush?.apply {
-            configureDockerPush(profile)
-        }
+        existing.dockerPush?.configureDockerPush(profile)
     }
 
     private fun DockerBuildProfile.configureDockerBuild(profile: Profile) {
@@ -69,11 +60,11 @@ internal class ProfileStore {
     }
 
     private fun DockerLoginProfile.configureDockerLogin(profile: Profile) {
-        awsProfile = awsProfile ?: profile.dockerPush?.awsProfile
-        loginMethod = loginMethod ?: profile.dockerPush?.loginMethod
-        registryRoot = registryRoot ?: profile.dockerPush?.registryRoot
-        loginUsername = loginUsername ?: profile.dockerPush?.loginUsername
-        loginPassword = loginPassword ?: profile.dockerPush?.loginPassword
+        awsProfile = awsProfile ?: profile.dockerLogin?.awsProfile
+        loginMethod = loginMethod ?: profile.dockerLogin?.loginMethod
+        registryRoot = registryRoot ?: profile.dockerLogin?.registryRoot
+        loginUsername = loginUsername ?: profile.dockerLogin?.loginUsername
+        loginPassword = loginPassword ?: profile.dockerLogin?.loginPassword
     }
 
     private fun DeployProfile.configureDeploy(profile: Profile) {

@@ -1,13 +1,11 @@
 plugins {
-    kotlin("jvm") version "1.4.21"
+    kotlin("jvm") version "1.8.22"
 
     id("com.gradle.plugin-publish") version "0.14.0"
 
     id("java-gradle-plugin")
     // Security check for dependencies by task
     id("org.owasp.dependencycheck") version "6.1.5"
-    // static code analysis
-    id("io.gitlab.arturbosch.detekt") version "1.16.0"
     id("com.diffplug.spotless") version "5.6.1"
     id("signing")
     id("maven-publish")
@@ -22,7 +20,7 @@ spotless {
 project.group = "net.mayope"
 
 dependencies {
-    implementation("com.beust:klaxon:5.2")
+    implementation("com.beust:klaxon:5.6")
 
     api(kotlin("stdlib"))
     api(kotlin("reflect"))
@@ -32,14 +30,7 @@ dependencies {
 
 
 repositories {
-    jcenter()
-}
-
-tasks {
-    withType<io.gitlab.arturbosch.detekt.Detekt> {
-        // Target version of the generated JVM bytecode. It is used for type resolution.
-        this.jvmTarget = "1.8"
-    }
+    mavenCentral()
 }
 
 pluginBundle {
@@ -110,10 +101,11 @@ dependencyCheck {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 }
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
+
