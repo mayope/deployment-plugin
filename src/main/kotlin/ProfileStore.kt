@@ -71,6 +71,7 @@ internal class ProfileStore {
         attributes = attributes ?: profile.deploy?.attributes
         helmDir = helmDir ?: profile.deploy?.helmDir
         kubeConfig = kubeConfig ?: profile.deploy?.kubeConfig
+        kubeContext = kubeContext ?: profile.deploy?.kubeContext
         targetNamespaces = targetNamespaces ?: profile.deploy?.targetNamespaces
     }
 

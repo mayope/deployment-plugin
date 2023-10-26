@@ -29,6 +29,10 @@ abstract class DeployTask @Inject constructor(
 
     @Input
     @Optional
+    var kubeContext: String? = null
+
+    @Input
+    @Optional
     var skipLayerCheck: Boolean? = null
 
     @Input
@@ -51,7 +55,7 @@ abstract class DeployTask @Inject constructor(
         return try {
             val values = command(
                 listOf("helm", "get", "-n", environment, "values", release, "-a", "-o", "json"),
-                environment = kubeconfigEnv()
+                environment = helmEnv()
             ).let {
                 Parser.default().parse(ByteArrayInputStream(it.toByteArray())) as JsonObject
             }.obj("image") ?: error("deployed image not found in json")
@@ -64,9 +68,16 @@ abstract class DeployTask @Inject constructor(
         }
     }
 
-    private fun kubeconfigEnv() = kubeConfig?.let {
-        mapOf("KUBECONFIG" to it)
-    } ?: emptyMap()
+    private fun helmEnv(): Map<String, String> {
+        val envMap: MutableMap<String, String> = mutableMapOf()
+        kubeConfig?.let {
+            envMap.put("KUBECONFIG", it)
+        }
+        kubeContext?.let {
+            envMap.put("HELM_KUBECONTEXT", it)
+        }
+        return envMap
+    }
 
     @SuppressWarnings("SpreadOperator")
     private fun Project.deployForEnvironment(
@@ -116,7 +127,7 @@ abstract class DeployTask @Inject constructor(
         logger.info("Updating helm dependencies")
 
         exec {
-            it.environment(kubeconfigEnv())
+            it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine("helm", "dependency", "update")
         }
@@ -140,7 +151,7 @@ abstract class DeployTask @Inject constructor(
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
         exec {
-            it.environment(kubeconfigEnv())
+            it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine(*args)
         }

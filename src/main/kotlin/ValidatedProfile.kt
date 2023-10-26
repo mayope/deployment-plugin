@@ -36,6 +36,7 @@ open class ValidatedDockerLoginProfile(profile: DockerLoginProfile) {
 
 open class ValidatedDeployProfile(profile: DeployProfile) {
     val kubeConfig: String? = profile.kubeConfig
+    val kubeContext: String? = profile.kubeContext
     val targetNamespaces: List<String> = profile.targetNamespaces ?: emptyList()
     val attributes: Map<String, String> = profile.attributes ?: emptyMap()
     val helmDir: String = profile.helmDir ?: "src/helm"

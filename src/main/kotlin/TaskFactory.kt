@@ -229,6 +229,7 @@ private fun Project.registerDeployInNamespaceTask(
         it.attributes = profile.attributes
         it.helmDir = profile.helmDir
         it.kubeConfig = profile.kubeConfig
+        it.kubeContext = profile.kubeContext
         it.targetNamespace = namespace
         it.skipLayerCheck = profile.skipLayerCheck
     }
