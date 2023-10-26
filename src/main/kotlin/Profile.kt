@@ -6,6 +6,7 @@ import net.mayope.deployplugin.tasks.VulnerabilitySeverity
 open class DeployProfile {
     var helmDir: String? = null
     var kubeConfig: String? = null
+    var kubeContext: String? = null
     var targetNamespaces: List<String>? = null
     var attributes: Map<String, String>? = null
     var skipLayerCheck: Boolean? = null
