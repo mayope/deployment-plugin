@@ -41,6 +41,7 @@ open class ValidatedDeployProfile(profile: DeployProfile) {
     val attributes: Map<String, String> = profile.attributes ?: emptyMap()
     val helmDir: String = profile.helmDir ?: "src/helm"
     val skipLayerCheck: Boolean? = profile.skipLayerCheck ?: false
+    val valuesFiles: List<String> = profile.valuesFiles ?: emptyList()
 }
 
 open class ValidatedHelmPushProfile(profile: HelmPushProfile) {

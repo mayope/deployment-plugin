@@ -6,6 +6,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import java.io.ByteArrayInputStream
@@ -41,6 +42,10 @@ abstract class DeployTask @Inject constructor(
 
     @InputDirectory
     var helmDir: String = "src/helm"
+
+    @InputFiles
+    @Optional
+    var valuesFiles: List<String> = emptyList()
 
     init {
         if (pushedTagFile != null) {
@@ -140,10 +145,12 @@ abstract class DeployTask @Inject constructor(
         namespace: String
     ) {
         val helmAttributes = attributes.entries.flatMap { listOf("--set", "${it.key}=${it.value}") }
-        file(deployedChartFile(serviceName, namespace, chartName)).writeText(helmAttributes.joinToString("\n"))
-        val args = if (helmAttributes.isNotEmpty()) {
+        val valuesFiles = valuesFiles.flatMap { listOf("-f", it) }
+        val helmAdditionalParams = helmAttributes + valuesFiles
+        file(deployedChartFile(serviceName, namespace, chartName)).writeText(helmAdditionalParams.joinToString("\n"))
+        val args = if (helmAdditionalParams.isNotEmpty()) {
             arrayOf(
-                "helm", "upgrade", "--install", chartName, ".", *helmAttributes.toTypedArray(), "-n", namespace
+                "helm", "upgrade", "--install", chartName, ".", *helmAdditionalParams.toTypedArray(), "-n", namespace
             )
         } else {
             arrayOf("helm", "upgrade", "--install", chartName, ".", "-n", namespace)
