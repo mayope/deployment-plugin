@@ -56,6 +56,7 @@ deploy {
           attributes = mapOf("key" to "value") // this map is given to helm if you need to parameterize your helm chart
           kubeConfig = System.getProperty("user.home")+"/.kube/config" // default null, not set
           kubeContext = "my-cluster"
+          valuesFiles = listOf("path/to/values.yaml") // list of values files to use
        }
        helmPush {
             version = "0.0.1" //if not set chart version is used
@@ -88,7 +89,8 @@ The helm chart is applied through `helm upgrate --install {serviceName} . --imag
 .  
 If a kubeConfig is set it will be set as `KUBECONFIG` environment variable.  
 If a kubeContext is set it will be set as `HELM_KUBECONTEXT` environment variable.  
-`attributes` will be delivered to helm via the `--set` directive.  
+`attributes` will be delivered to helm via the `--set` directive.
+`valuesFiles` will be delivered to helm via the `-f` directive.
 If a `dockerPush` directive is present in the same profile it will also deliver the variables `image.version` with the
 docker image version that was just build. And the variable `image.repository` with the image Repository that was just
 build( e.g. `registry.mayope.net/demoapp`).

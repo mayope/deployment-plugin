@@ -232,6 +232,7 @@ private fun Project.registerDeployInNamespaceTask(
         it.kubeContext = profile.kubeContext
         it.targetNamespace = namespace
         it.skipLayerCheck = profile.skipLayerCheck
+        it.valuesFiles = profile.valuesFiles
     }
     namespaceDeploymentTaskInRootProject(namespace).dependsOn(tasks.findByPath(namespaceDeployTask)!!.path)
     return namespaceDeployTask

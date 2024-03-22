@@ -73,6 +73,7 @@ internal class ProfileStore {
         kubeConfig = kubeConfig ?: profile.deploy?.kubeConfig
         kubeContext = kubeContext ?: profile.deploy?.kubeContext
         targetNamespaces = targetNamespaces ?: profile.deploy?.targetNamespaces
+        valuesFiles = valuesFiles ?: profile.deploy?.valuesFiles
     }
 
     private fun HelmPushProfile.configureHelmPush(profile: Profile) {
