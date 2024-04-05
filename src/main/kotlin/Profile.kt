@@ -10,6 +10,7 @@ open class DeployProfile {
     var targetNamespaces: List<String>? = null
     var attributes: Map<String, String>? = null
     var skipLayerCheck: Boolean? = null
+    var valuesFiles: List<String>? = null
 }
 
 open class DockerBuildProfile {
