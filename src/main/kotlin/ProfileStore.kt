@@ -23,25 +23,22 @@ internal class ProfileStore {
 
     fun profiles() = profileMap.values.map { ValidatedProfile(it) }
 
-    private fun fillMissingProperties(profile: Profile) {
-        if (profile.name !in profileMap) {
-            return
-        }
-        profileMap[profile.name]!!.let {
-            configureProfile(it, profile)
+    private fun fillMissingProperties(defaultProfile: Profile) {
+        profileMap[defaultProfile.name]?.let {
+            configureProfile(it, defaultProfile)
         }
     }
 
-    private fun configureProfile(existing: Profile, profile: Profile) {
-        existing.deploy?.configureDeploy(profile)
-        existing.dockerBuild?.configureDockerBuild(profile)
-        existing.dockerScan?.configureDockerScan(profile)
-        existing.helmPush?.configureHelmPush(profile)
-        existing.dockerLogin?.configureDockerLogin(profile)
-        if (existing.dockerLogin == null && profile.dockerLogin != null) {
-            DockerLoginProfile().configureDockerLogin(profile)
+    private fun configureProfile(existing: Profile, defaultProfile: Profile) {
+        existing.deploy?.configureDeploy(defaultProfile)
+        existing.dockerBuild?.configureDockerBuild(defaultProfile)
+        existing.dockerScan?.configureDockerScan(defaultProfile)
+        existing.helmPush?.configureHelmPush(defaultProfile)
+        existing.dockerLogin?.configureDockerLogin(defaultProfile)
+        if (existing.dockerLogin == null && defaultProfile.dockerLogin != null) {
+            DockerLoginProfile().configureDockerLogin(defaultProfile)
         }
-        existing.dockerPush?.configureDockerPush(profile)
+        existing.dockerPush?.configureDockerPush(defaultProfile)
     }
 
     private fun DockerBuildProfile.configureDockerBuild(profile: Profile) {
