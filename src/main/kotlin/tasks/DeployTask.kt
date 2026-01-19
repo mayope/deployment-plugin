@@ -10,6 +10,7 @@ import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import java.io.ByteArrayInputStream
+import java.io.File
 import javax.inject.Inject
 
 abstract class DeployTask @Inject constructor(
@@ -94,7 +95,7 @@ abstract class DeployTask @Inject constructor(
             val appVersion = file(dockerVersionFile()).readText()
             val appRepo = file(dockerPushedRepoFile()).readText()
 
-            val tag = file(pushedTagFile).readText(Charsets.UTF_8)
+            val tag = File(pushedTagFile).readText(Charsets.UTF_8)
             val (remoteRepository, remoteVersion) = queryRemoteTag(serviceName, namespace) ?: "" to ""
 
             println("Deploying chart: $serviceName, currentVersion: $remoteVersion in environment: $namespace")
@@ -131,11 +132,11 @@ abstract class DeployTask @Inject constructor(
 
         logger.info("Updating helm dependencies")
 
-        exec {
+        providers.exec {
             it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine("helm", "dependency", "update")
-        }
+        }.result.get()
     }
 
     @Suppress("SpreadOperator")
@@ -157,11 +158,11 @@ abstract class DeployTask @Inject constructor(
         }
         logger.info("Executing helm with: ${args.joinToString(" ")}")
 
-        exec {
+        providers.exec {
             it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine(*args)
-        }
+        }.result.get()
         file(deployedChartFile(serviceName, namespace, chartName)).parentFile.mkdirs()
     }
 

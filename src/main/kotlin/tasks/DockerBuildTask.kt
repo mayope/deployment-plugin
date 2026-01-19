@@ -30,14 +30,14 @@ open class DockerBuildTask : DefaultTask() {
     private fun Project.buildDocker() {
         val appVersion = determineVersion()
         val tag = tag("", serviceName, appVersion)
-        exec {
+        providers.exec {
             it.workingDir(buildDockerDir)
             if (architecture != null) {
                 it.commandLine("docker", "build", ".", "-t", tag, "--platform", architecture)
             } else {
                 it.commandLine("docker", "build", ".", "-t", tag)
             }
-        }
+        }.result.get()
         file(dockerTagFile()).writeText(tag)
         file(dockerVersionFile()).writeText(appVersion)
         file(dockerNameFile()).writeText(serviceName)

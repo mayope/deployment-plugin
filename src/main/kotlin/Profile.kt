@@ -42,6 +42,13 @@ open class HelmPushProfile {
     var repositoryPassword: String? = null
     var version: String? = null
 }
+open class HelmOCIPushProfile {
+    var helmDir: String? = null
+    var registryRoot: String? = null
+    var loginUsername: String? = null
+    var loginPassword: String? = null
+    var version: String? = null
+}
 
 open class DockerLoginProfile {
     var awsProfile: String? = null
@@ -57,6 +64,7 @@ open class Profile(val name: String) {
     internal var dockerScan: DockerSecurityScanProfile? = null
     internal var dockerPush: DockerPushProfile? = null
     internal var helmPush: HelmPushProfile? = null
+    internal var helmOCIPush: HelmOCIPushProfile? = null
     internal var dockerLogin: DockerLoginProfile? = null
 
     fun deploy(receiver: DeployProfile.() -> Unit = {}) {
@@ -87,6 +95,11 @@ open class Profile(val name: String) {
 
     fun helmPush(receiver: HelmPushProfile.() -> Unit = {}) {
         helmPush = HelmPushProfile().apply {
+            receiver()
+        }
+    }
+    fun helmOCIPush(receiver: HelmOCIPushProfile.() -> Unit = {}) {
+        helmOCIPush = HelmOCIPushProfile().apply {
             receiver()
         }
     }

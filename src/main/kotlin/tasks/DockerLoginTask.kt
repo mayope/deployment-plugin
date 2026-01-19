@@ -30,9 +30,9 @@ enum class DockerLoginMethod {
         if (username.isBlank() || password.isBlank() || host.isBlank()) {
             error("You have to configure host, username and password for classical docker login")
         }
-        exec {
+        providers.exec {
             it.commandLine(listOf("docker", "login", host, "--username", username, "-p", password))
-        }
+        }.result.get()
         return "logged in"
     }
 
@@ -40,9 +40,9 @@ enum class DockerLoginMethod {
         if (username.isBlank() || password.isBlank()) {
             error("You have to configure, username and password for dockerhub login")
         }
-        exec {
+        providers.exec {
             it.commandLine(listOf("docker", "login", "--username", username, "-p", password))
-        }
+        }.result.get()
         return "logged in"
     }
 
@@ -51,20 +51,20 @@ enum class DockerLoginMethod {
             error("You have to configure host for aws docker login")
         }
         ByteArrayOutputStream().use { os ->
-            exec {
+            providers.exec {
                 it.environment(awsProfile(awsProfile))
                 it.commandLine("aws", "ecr", "get-login-password")
                 it.standardOutput = os
-            }
+            }.result.get()
             val loginToken = os.toString(Charsets.UTF_8).trim()
-            exec {
+            providers.exec {
                 it.commandLine(
                     listOf(
                         "docker", "login", host, "--username",
                         "AWS", "-p", loginToken
                     )
                 )
-            }
+            }.result.get()
             return loginToken
         }
     }

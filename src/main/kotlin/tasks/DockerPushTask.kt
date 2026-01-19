@@ -21,27 +21,27 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
     private fun Project.pushDocker(serviceName: String) {
         val dockerRegistry = registry ?: ""
 
-        exec {
+        providers.exec {
             it.commandLine(
                 "docker", "tag", file(dockerTagFile()).readText(),
                 tagLatest(dockerRegistry, serviceName)
             )
-        }
+        }.result.get()
         val buildTag = file(dockerTagFile()).readText()
         val buildName = file(dockerNameFile()).readText()
         val pushedDockerTag = "$dockerRegistry/$buildTag"
         val pushedDockerRepo = "$dockerRegistry/$buildName"
-        exec {
+        providers.exec {
             it.commandLine(
                 "docker", "tag", buildTag, pushedDockerTag
             )
-        }
-        exec {
+        }.result.get()
+        providers.exec {
             it.commandLine("docker", "push", pushedDockerTag)
-        }
-        exec {
+        }.result.get()
+        providers.exec {
             it.commandLine("docker", "push", tagLatest(dockerRegistry, serviceName))
-        }
+        }.result.get()
         file(dockerPushedTagFile()).writeText(pushedDockerTag)
         file(dockerPushedRepoFile()).writeText(pushedDockerRepo)
     }

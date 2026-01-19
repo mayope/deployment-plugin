@@ -34,6 +34,7 @@ internal class ProfileStore {
         existing.dockerBuild?.configureDockerBuild(defaultProfile)
         existing.dockerScan?.configureDockerScan(defaultProfile)
         existing.helmPush?.configureHelmPush(defaultProfile)
+        existing.helmOCIPush?.configureHelmOCIPush(defaultProfile)
         existing.dockerLogin?.configureDockerLogin(defaultProfile)
         if (existing.dockerLogin == null && defaultProfile.dockerLogin != null) {
             DockerLoginProfile().configureDockerLogin(defaultProfile)
@@ -78,6 +79,13 @@ internal class ProfileStore {
         repositoryUrl = repositoryUrl ?: profile.helmPush?.repositoryUrl
         repositoryUsername = repositoryUsername ?: profile.helmPush?.repositoryUsername
         repositoryPassword = repositoryPassword ?: profile.helmPush?.repositoryPassword
+    }
+
+    private fun HelmOCIPushProfile.configureHelmOCIPush(profile: Profile) {
+        helmDir = helmDir ?: profile.helmOCIPush?.helmDir
+        registryRoot = registryRoot ?: profile.helmOCIPush?.registryRoot
+        loginUsername = loginUsername ?: profile.helmOCIPush?.loginUsername
+        loginPassword = loginPassword ?: profile.helmOCIPush?.loginPassword
     }
 
     private fun DockerSecurityScanProfile.configureDockerScan(profile: Profile) {

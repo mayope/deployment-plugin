@@ -52,6 +52,14 @@ open class ValidatedHelmPushProfile(profile: HelmPushProfile) {
     val repositoryPassword: String = profile.repositoryPassword ?: ""
     val version: String? = null
 }
+open class ValidatedHelmOCIPushProfile(profile: HelmOCIPushProfile) {
+    val helmDir: String = profile.helmDir ?: "src/helm"
+    val registryRoot: String =
+        profile.registryRoot ?: error("HelmRepository url has to be set for helmOCIPush")
+    val loginUsername: String = profile.loginUsername ?: ""
+    val loginPassword: String = profile.loginPassword ?: ""
+    val version: String? = null
+}
 
 open class ValidatedProfile(profile: Profile) {
     val name = profile.name
@@ -69,6 +77,9 @@ open class ValidatedProfile(profile: Profile) {
     }
     val helmPush = profile.helmPush?.let {
         ValidatedHelmPushProfile(it)
+    }
+    val helmOCIPush = profile.helmOCIPush?.let {
+        ValidatedHelmOCIPushProfile(it)
     }
     val dockerLogin = profile.dockerLogin?.let {
         ValidatedDockerLoginProfile(it)

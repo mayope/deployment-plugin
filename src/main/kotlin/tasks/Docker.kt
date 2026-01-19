@@ -37,12 +37,12 @@ internal fun Project.command(
 ) =
     ByteArrayOutputStream().also { stream ->
         logger.info("Running command $cmd")
-        exec {
+        providers.exec {
             it.environment.putAll(environment)
             it.commandLine = cmd
             it.standardOutput = stream
             it.workingDir = File(workingDirectory)
-        }
+        }.result.get()
     }.run {
         toString().trim()
     }

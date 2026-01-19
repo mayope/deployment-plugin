@@ -33,7 +33,7 @@ open class DockerGrypeScanTask : DefaultTask() {
 
     private fun Project.securityScan() {
         ByteArrayOutputStream().use { os ->
-            exec {
+            providers.exec {
                 it.workingDir(buildDockerDir)
                 it.commandLine(
                     "docker", "run", "-t", "-v", "$buildDockerDir/$serviceName:/var/$serviceName",
@@ -41,7 +41,7 @@ open class DockerGrypeScanTask : DefaultTask() {
                     "--fail-on", failOnThreshold.value
                 )
                 it.standardOutput = os
-            }
+            }.result.get()
             file(securityScanFile()).writeText(os.toString(Charsets.UTF_8).trim())
         }
     }

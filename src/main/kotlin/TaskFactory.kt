@@ -2,13 +2,8 @@
 
 package net.mayope.deployplugin
 
-import net.mayope.deployplugin.tasks.DeployTask
-import net.mayope.deployplugin.tasks.DockerBuildTask
-import net.mayope.deployplugin.tasks.DockerGrypeScanTask
-import net.mayope.deployplugin.tasks.DockerLoginTask
-import net.mayope.deployplugin.tasks.DockerPushTask
-import net.mayope.deployplugin.tasks.HelmPushTask
-import net.mayope.deployplugin.tasks.dockerPushedTagFile
+import net.mayope.deployplugin.tasks.*
+import net.mayope.deployplugin.tasks.HelmOCIPushTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
@@ -39,6 +34,9 @@ internal fun Project.registerTasksForProfile(profile: ValidatedProfile, serviceN
     val helmPushTasks = profile.helmPush?.let {
         registerHelmPushTask(it, serviceName, profile.taskSuffix())
     }
+    val helmOCIPushTasks = profile.helmOCIPush?.let {
+        registerHelmOCIPushTask(it, serviceName, profile.taskSuffix())
+    }
 
     return deployTasks.plus(listOfNotNull(pushDockerTask, helmPushTasks))
 }
@@ -55,7 +53,7 @@ private fun Project.registerLoginTask(
         it.password = profile.loginPassword
         it.description =
             "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-            " ${profile.loginMethod}"
+                    " ${profile.loginMethod}"
         it.awsProfile = profile.awsProfile
     }
     return loginTask
@@ -127,6 +125,25 @@ private fun Project.registerHelmPushTask(
     return task
 }
 
+private fun Project.registerHelmOCIPushTask(
+    profile: ValidatedHelmOCIPushProfile,
+    serviceName: String,
+    taskSuffix: String,
+): String {
+    val task = "pushOCIChart$taskSuffix${serviceName.capitalize()}"
+    tasks.register(task, HelmOCIPushTask::class.java, serviceName).configure {
+        it.description = "Pushes the helmChart of $serviceName service."
+        it.group = "deploy"
+        it.helmDir = profile.helmDir
+        it.registry = profile.registryRoot
+        it.password = profile.loginPassword
+        it.userName = profile.loginUsername
+        it.chartVersion = profile.version
+    }
+
+    return task
+}
+
 private fun Project.registerPrepareBuildDockerTask(profile: ValidatedDockerBuildProfile, taskSuffix: String): String {
 
     val prepareTask = profile.prepareTask
@@ -164,7 +181,7 @@ private fun Project.registerDockerPushTask(
             it.password = profile.loginPassword
             it.description =
                 "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                " ${profile.loginMethod}"
+                        " ${profile.loginMethod}"
             it.awsProfile = profile.awsProfile
         }
     }

@@ -1,20 +1,12 @@
-plugins {
-    kotlin("jvm") version "1.8.22"
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-    id("com.gradle.plugin-publish") version "0.14.0"
+plugins {
+    kotlin("jvm") version "2.3.0"
 
     id("java-gradle-plugin")
-    // Security check for dependencies by task
-    id("org.owasp.dependencycheck") version "6.1.5"
-    id("com.diffplug.spotless") version "5.6.1"
     id("signing")
     id("maven-publish")
-}
-val ktLintVersion = "0.41.0"
-spotless {
-    kotlin {
-        ktlint(ktLintVersion)
-    }
+    id("com.gradle.plugin-publish") version "2.0.0"
 }
 
 project.group = "net.mayope"
@@ -32,14 +24,21 @@ dependencies {
 repositories {
     mavenCentral()
 }
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it is Sign }) {
+        allprojects {
+            extra["signing.keyId"] = "5357AC31"
+            extra["signing.secretKeyRingFile"] = project.findProperty("signing_key_ring_file")
+            extra["signing.password"] = project.findProperty("signing_key_ring_file_password")
+        }
+    }
+}
 
-pluginBundle {
+gradlePlugin {
     website = "https://github.com/mayope/deployment-plugin"
     vcsUrl = "https://github.com/mayope/deployment-plugin"
-    tags = listOf("helm", "kubernetes", "deployment", "docker")
 
-}
-gradlePlugin {
+
     plugins {
         create("deployplugin") {
             group = project.group
@@ -47,6 +46,7 @@ gradlePlugin {
             displayName = "Mayope Deployment Plugin"
             description = "Opinionated tool to deploy docker container to kubernetes using helm"
             implementationClass="net.mayope.deployplugin.DeployPlugin"
+            tags = listOf("helm", "kubernetes", "deployment", "docker")
         }
     }
 }
@@ -92,20 +92,13 @@ val publications = project.publishing.publications.withType(MavenPublication::cl
 signing{
     sign(publishing.publications["mavenJava"])
 }
-dependencyCheck {
-    failOnError = true
-    // https://www.first.org/cvss/specification-document#Qualitative-Severity-Rating-Scale
-    failBuildOnCVSS = 0.0f
-    analyzers.assemblyEnabled = false
-}
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all {
-    kotlinOptions {
-        jvmTarget = "17"
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_23)
     }
 }
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_23
+    targetCompatibility = JavaVersion.VERSION_23
 }
-
