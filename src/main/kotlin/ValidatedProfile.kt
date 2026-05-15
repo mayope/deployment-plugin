@@ -17,12 +17,8 @@ open class ValidatedDockerScanProfile(profile: DockerSecurityScanProfile) {
 }
 
 open class ValidatedDockerPushProfile(profile: DockerPushProfile) {
-    val awsProfile: String? = profile.awsProfile
     val registryRoot: String =
         profile.registryRoot ?: error("Docker registry root not set for profile")
-    val loginMethod: DockerLoginMethod = profile.loginMethod ?: DockerLoginMethod.CLASSIC
-    val loginUsername: String = profile.loginUsername ?: ""
-    val loginPassword: String = profile.loginPassword ?: ""
 }
 
 open class ValidatedDockerLoginProfile(profile: DockerLoginProfile) {

@@ -50,11 +50,7 @@ internal class ProfileStore {
     }
 
     private fun DockerPushProfile.configureDockerPush(profile: Profile) {
-        awsProfile = awsProfile ?: profile.dockerPush?.awsProfile
-        loginMethod = loginMethod ?: profile.dockerPush?.loginMethod
         registryRoot = registryRoot ?: profile.dockerPush?.registryRoot
-        loginUsername = loginUsername ?: profile.dockerPush?.loginUsername
-        loginPassword = loginPassword ?: profile.dockerPush?.loginPassword
     }
 
     private fun DockerLoginProfile.configureDockerLogin(profile: Profile) {

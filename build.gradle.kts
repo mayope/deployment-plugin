@@ -6,7 +6,7 @@ plugins {
     id("java-gradle-plugin")
     id("signing")
     id("maven-publish")
-    id("com.gradle.plugin-publish") version "2.0.0"
+    id("com.gradle.plugin-publish") version "2.1.1"
 }
 
 project.group = "net.mayope"
@@ -98,7 +98,10 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all 
         jvmTarget.set(JvmTarget.JVM_23)
     }
 }
+
 java {
     sourceCompatibility = JavaVersion.VERSION_23
     targetCompatibility = JavaVersion.VERSION_23
+    withJavadocJar()
+    withSourcesJar()
 }

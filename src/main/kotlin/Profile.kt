@@ -28,11 +28,7 @@ open class DockerSecurityScanProfile {
 }
 
 open class DockerPushProfile {
-    var awsProfile: String? = null
     var registryRoot: String? = null
-    var loginMethod: DockerLoginMethod? = null
-    var loginUsername: String? = null
-    var loginPassword: String? = null
 }
 
 open class HelmPushProfile {

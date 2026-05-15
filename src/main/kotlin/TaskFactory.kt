@@ -3,7 +3,6 @@
 package net.mayope.deployplugin
 
 import net.mayope.deployplugin.tasks.*
-import net.mayope.deployplugin.tasks.HelmOCIPushTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
@@ -25,7 +24,13 @@ internal fun Project.registerTasksForProfile(profile: ValidatedProfile, serviceN
         if (buildDockerTask == null) {
             error("Docker Push needs a dockerBuild first")
         }
-        registerDockerPushTask(it, serviceName, profile.taskSuffix(), buildDockerTask)
+        registerDockerPushTask(
+            it,
+            profile.dockerLogin ?: error("Docker push needs docker login task too"),
+            serviceName,
+            profile.taskSuffix(),
+            buildDockerTask
+        )
     }
     val deployTasks = profile.deploy?.let {
         registerDeployTasks(it, serviceName, profile.taskSuffix(), pushDockerTask)
@@ -168,6 +173,7 @@ private fun Project.registerPrepareBuildDockerTask(profile: ValidatedDockerBuild
 
 private fun Project.registerDockerPushTask(
     profile: ValidatedDockerPushProfile,
+    loginProfile: ValidatedDockerLoginProfile,
     serviceName: String,
     taskSuffix: String,
     buildDockerTask: String,
@@ -175,14 +181,14 @@ private fun Project.registerDockerPushTask(
     val loginTask = "dockerLogin$taskSuffix"
     if (tasks.findByName(loginTask) == null) {
         tasks.register(loginTask, DockerLoginTask::class.java) {
-            it.host = profile.registryRoot
-            it.loginMethod = profile.loginMethod
-            it.username = profile.loginUsername
-            it.password = profile.loginPassword
+            it.host = loginProfile.registryRoot
+            it.loginMethod = loginProfile.loginMethod
+            it.username = loginProfile.loginUsername
+            it.password = loginProfile.loginPassword
             it.description =
-                "Logs into the dockerRegistry: ${profile.registryRoot} using method:" +
-                        " ${profile.loginMethod}"
-            it.awsProfile = profile.awsProfile
+                "Logs into the dockerRegistry: ${loginProfile.registryRoot} using method:" +
+                        " ${loginProfile.loginMethod}"
+            it.awsProfile = loginProfile.awsProfile
         }
     }
     val pushDockerTask = "pushDocker$taskSuffix${serviceName.capitalize()}"
