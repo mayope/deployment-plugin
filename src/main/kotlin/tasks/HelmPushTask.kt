@@ -48,10 +48,10 @@ abstract class HelmPushTask @Inject constructor(@Input val serviceName: String) 
         }
         logger.info("Executing helmpush with: ${args.joinToString(" ")}")
 
-        providers.exec {
+        println(providers.exec {
             it.workingDir(helmDir)
             it.commandLine(*args)
-        }.result.get()
+        }.standardOutput.asText)
         file(project.pushedChartVersion(serviceName)).parentFile.mkdirs()
     }
 

@@ -37,7 +37,7 @@ open class DockerBuildTask : DefaultTask() {
             } else {
                 it.commandLine("docker", "build", ".", "-t", tag)
             }
-        }.result.get()
+        }.print()
         file(dockerTagFile()).writeText(tag)
         file(dockerVersionFile()).writeText(appVersion)
         file(dockerNameFile()).writeText(serviceName)

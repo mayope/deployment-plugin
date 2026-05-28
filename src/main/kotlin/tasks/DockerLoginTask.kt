@@ -32,7 +32,7 @@ enum class DockerLoginMethod {
         }
         providers.exec {
             it.commandLine(listOf("docker", "login", host, "--username", username, "-p", password))
-        }.result.get()
+        }.print()
         return "logged in"
     }
 
@@ -42,7 +42,7 @@ enum class DockerLoginMethod {
         }
         providers.exec {
             it.commandLine(listOf("docker", "login", "--username", username, "-p", password))
-        }.result.get()
+        }.print()
         return "logged in"
     }
 
@@ -55,7 +55,7 @@ enum class DockerLoginMethod {
                 it.environment(awsProfile(awsProfile))
                 it.commandLine("aws", "ecr", "get-login-password")
                 it.standardOutput = os
-            }.result.get()
+            }.print()
             val loginToken = os.toString(Charsets.UTF_8).trim()
             providers.exec {
                 it.commandLine(
@@ -64,7 +64,7 @@ enum class DockerLoginMethod {
                         "AWS", "-p", loginToken
                     )
                 )
-            }.result.get()
+            }.print()
             return loginToken
         }
     }

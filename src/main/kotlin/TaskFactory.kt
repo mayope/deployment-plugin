@@ -250,7 +250,7 @@ private fun Project.registerDeployInNamespaceTask(
             it.dependsOn(pushDockerTask)
         }
         it.attributes = profile.attributes
-        it.helmDir = profile.helmDir
+        it.helmDir = projectDir.toString()+"/"+profile.helmDir
         it.kubeConfig = profile.kubeConfig
         it.kubeContext = profile.kubeContext
         it.targetNamespace = namespace
@@ -263,6 +263,6 @@ private fun Project.registerDeployInNamespaceTask(
 
 private fun Project.namespaceDeploymentTaskInRootProject(namespace: String): Task {
     return rootProject.tasks.findByPath("deploy${namespace.capitalize()}") ?: error(
-        "task should aready be created"
+        "task should already be created"
     )
 }

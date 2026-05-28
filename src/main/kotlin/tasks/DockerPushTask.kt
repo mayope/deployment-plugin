@@ -4,6 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOutput
 import javax.inject.Inject
 
 open class DockerPushTask @Inject constructor(@Input val serviceName: String) : DefaultTask() {
@@ -26,7 +27,7 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
                 "docker", "tag", file(dockerTagFile()).readText(),
                 tagLatest(dockerRegistry, serviceName)
             )
-        }.result.get()
+        }.print()
         val buildTag = file(dockerTagFile()).readText()
         val buildName = file(dockerNameFile()).readText()
         val pushedDockerTag = "$dockerRegistry/$buildTag"
@@ -35,13 +36,13 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
             it.commandLine(
                 "docker", "tag", buildTag, pushedDockerTag
             )
-        }.result.get()
+        }.print()
         providers.exec {
             it.commandLine("docker", "push", pushedDockerTag)
-        }.result.get()
+        }.print()
         providers.exec {
             it.commandLine("docker", "push", tagLatest(dockerRegistry, serviceName))
-        }.result.get()
+        }.print()
         file(dockerPushedTagFile()).writeText(pushedDockerTag)
         file(dockerPushedRepoFile()).writeText(pushedDockerRepo)
     }
@@ -50,4 +51,9 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
     fun push() {
         project.pushDocker(serviceName)
     }
+}
+
+fun ExecOutput.print(){
+    println(standardError.asText.get())
+    println(standardOutput.asText.get())
 }
