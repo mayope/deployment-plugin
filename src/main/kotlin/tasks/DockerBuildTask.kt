@@ -37,7 +37,8 @@ open class DockerBuildTask : DefaultTask() {
             } else {
                 it.commandLine("docker", "build", ".", "-t", tag)
             }
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         file(dockerTagFile()).writeText(tag)
         file(dockerVersionFile()).writeText(appVersion)
         file(dockerNameFile()).writeText(serviceName)

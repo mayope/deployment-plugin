@@ -40,8 +40,9 @@ open class DockerGrypeScanTask : DefaultTask() {
                     "-v", "$ignoreFilePath/grype.yaml:/.grype.yaml", "anchore/grype:latest", "dir:/var/$serviceName",
                     "--fail-on", failOnThreshold.value
                 )
+                it.isIgnoreExitValue = true
                 it.standardOutput = os
-            }.result.get()
+            }.printAndFailIfExitValueUnzero()
             file(securityScanFile()).writeText(os.toString(Charsets.UTF_8).trim())
         }
     }

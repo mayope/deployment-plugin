@@ -27,7 +27,8 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
                 "docker", "tag", file(dockerTagFile()).readText(),
                 tagLatest(dockerRegistry, serviceName)
             )
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         val buildTag = file(dockerTagFile()).readText()
         val buildName = file(dockerNameFile()).readText()
         val pushedDockerTag = "$dockerRegistry/$buildTag"
@@ -36,13 +37,16 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
             it.commandLine(
                 "docker", "tag", buildTag, pushedDockerTag
             )
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         providers.exec {
             it.commandLine("docker", "push", pushedDockerTag)
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         providers.exec {
             it.commandLine("docker", "push", tagLatest(dockerRegistry, serviceName))
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         file(dockerPushedTagFile()).writeText(pushedDockerTag)
         file(dockerPushedRepoFile()).writeText(pushedDockerRepo)
     }
@@ -53,7 +57,10 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
     }
 }
 
-fun ExecOutput.print(){
+fun ExecOutput.printAndFailIfExitValueUnzero() {
     println(standardError.asText.get())
     println(standardOutput.asText.get())
+    if (this.result.get().exitValue != 0) {
+        error("Process failed with exit value ${this.result.get().exitValue}")
+    }
 }

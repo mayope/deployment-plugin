@@ -42,7 +42,8 @@ internal fun Project.command(
             it.commandLine = cmd
             it.standardOutput = stream
             it.workingDir = File(workingDirectory)
-        }.result.get()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
     }.run {
         toString().trim()
     }

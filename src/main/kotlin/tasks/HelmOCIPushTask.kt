@@ -52,7 +52,8 @@ abstract class HelmOCIPushTask @Inject constructor(@Input val serviceName: Strin
         providers.exec {
             it.workingDir(project.projectDir)
             it.commandLine(*args)
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         return File(buildHelmDir).listFiles()?.toSet()?.subtract(filesBefore)?.firstOrNull()?.absolutePath
             ?: error("Could not find new file in $buildHelmDir")
     }
@@ -65,7 +66,8 @@ abstract class HelmOCIPushTask @Inject constructor(@Input val serviceName: Strin
 
         providers.exec {
             it.commandLine(*args)
-        }.print()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         file(project.pushedChartVersion(serviceName)).parentFile.mkdirs()
     }
 

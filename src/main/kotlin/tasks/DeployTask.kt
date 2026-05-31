@@ -136,7 +136,7 @@ abstract class DeployTask @Inject constructor(
             it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine("helm", "dependency", "update")
-        }.result.get()
+        }.printAndFailIfExitValueUnzero()
     }
 
     @Suppress("SpreadOperator")
@@ -162,7 +162,8 @@ abstract class DeployTask @Inject constructor(
             it.environment(helmEnv())
             it.workingDir(helmDir)
             it.commandLine(*args)
-        }.result.get()
+            it.isIgnoreExitValue = true
+        }.printAndFailIfExitValueUnzero()
         file(deployedChartFile(serviceName, namespace, chartName)).parentFile.mkdirs()
     }
 
