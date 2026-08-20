@@ -16,6 +16,10 @@ dependencies {
 
     api(kotlin("stdlib"))
     api(kotlin("reflect"))
+    api(kotlin("reflect"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.pty4j:pty4j:0.13.4")
+    implementation("com.github.docker-java:docker-java:3.7.1")
     implementation(gradleApi())
     implementation(localGroovy())
 }

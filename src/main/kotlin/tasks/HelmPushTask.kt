@@ -35,23 +35,20 @@ abstract class HelmPushTask @Inject constructor(@Input val serviceName: String) 
 
     @Suppress("SpreadOperator")
     private fun Project.pushChart() {
-        val args = if (chartVersion != null) {
+        val args: Array<String> = if (chartVersion != null) {
             arrayOf(
-                "helmpush", ".", url, "-u", userName, "-p",
-                password, "-v", chartVersion, "-f"
+                "helmpush", ".", url, "-u", userName?:"", "-p",
+                password?:"", "-v", chartVersion?:"", "-f"
             )
         } else {
             arrayOf(
-                "helmpush", ".", url, "-u", userName, "-p",
-                password, "-f",
+                "helmpush", ".", url, "-u", userName?:"", "-p",
+                password?:"", "-f",
             )
         }
         logger.info("Executing helmpush with: ${args.joinToString(" ")}")
 
-        providers.exec {
-            it.workingDir(helmDir)
-            it.commandLine(*args)
-        }.printAndFailIfExitValueUnzero()
+        executeCommand(*args, workingDir = helmDir)
         file(project.pushedChartVersion(serviceName)).parentFile.mkdirs()
     }
 
