@@ -20,6 +20,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.pty4j:pty4j:0.13.4")
     implementation("com.github.docker-java:docker-java:3.7.1")
+    implementation("com.github.docker-java:docker-java-transport-httpclient5:3.7.1")
     implementation(gradleApi())
     implementation(localGroovy())
 }

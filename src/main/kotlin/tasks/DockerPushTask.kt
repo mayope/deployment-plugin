@@ -1,5 +1,10 @@
 package net.mayope.deployplugin.tasks
 
+import com.github.dockerjava.api.async.ResultCallback
+import com.github.dockerjava.api.model.PushResponseItem
+import com.github.dockerjava.core.DefaultDockerClientConfig
+import com.github.dockerjava.core.DockerClientImpl
+import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import com.pty4j.PtyProcessBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,8 +14,11 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
+import org.gradle.internal.impldep.org.eclipse.jgit.transport.PushResult
 import org.gradle.process.ExecOutput
 import java.io.BufferedReader
+import java.io.Closeable
+import java.time.Duration
 import javax.inject.Inject
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -43,17 +51,40 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
         val pushedDockerRepo = "$dockerRegistry/$buildName"
         executeCommand("docker", "tag", buildTag, pushedDockerTag, isIgnoreExitValue = true)
 
-        ApacheDockerHttpClient.Builder()
-            .dockerHost(config.getDockerHost())
-            .sslConfig(config.getSSLConfig())
-            .maxConnections(100)
-            .connectionTimeout(Duration.ofSeconds(30))
-            .responseTimeout(Duration.ofSeconds(45))
-            .build().let{
+        DefaultDockerClientConfig.createDefaultConfigBuilder().build().let { config ->
+            ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .maxConnections(100)
+                .connectionTimeout(Duration.ofSeconds(30))
+                .responseTimeout(Duration.ofSeconds(45))
+                .build().let {
+                    DockerClientImpl.getInstance(config, it)
+                }
+        }.run {
+            pushImageCmd(pushedDockerTag).withTag(pushedDockerTag).exec<ResultCallback<PushResponseItem>>(object : ResultCallback<PushResponseItem> {
+                override fun onStart(closeable: Closeable?) {
+                }
 
+                override fun onNext(item: PushResponseItem?) {
+                    if (item != null) {
+                        println("\r"+item.status)
+                    }
+                }
 
-            }
-        executeCommand("docker", "push", pushedDockerTag)
+                override fun onError(throwable: Throwable?) {
+                    println(throwable)
+                }
+
+                override fun onComplete() {
+                }
+
+                override fun close() {
+                }
+
+            })
+        }
+        //executeCommand("docker", "push", pushedDockerTag)
 
         executeCommand(
             "docker", "push", tagLatest(dockerRegistry, serviceName),
