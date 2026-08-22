@@ -14,13 +14,13 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
-import org.gradle.internal.impldep.org.eclipse.jgit.transport.PushResult
 import org.gradle.process.ExecOutput
 import java.io.BufferedReader
 import java.io.Closeable
 import java.time.Duration
 import javax.inject.Inject
 import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 
@@ -62,27 +62,41 @@ open class DockerPushTask @Inject constructor(@Input val serviceName: String) : 
                     DockerClientImpl.getInstance(config, it)
                 }
         }.run {
-            pushImageCmd(pushedDockerTag).withTag(pushedDockerTag).exec<ResultCallback<PushResponseItem>>(object : ResultCallback<PushResponseItem> {
-                override fun onStart(closeable: Closeable?) {
-                }
-
-                override fun onNext(item: PushResponseItem?) {
-                    if (item != null) {
-                        println("\r"+item.status)
+            val (name, tag) = pushedDockerTag.split(":")
+            pushImageCmd(name)
+                .withTag(tag)
+                .exec<ResultCallback<PushResponseItem>>(object : ResultCallback<PushResponseItem> {
+                    val id = AtomicReference("")
+                    override fun onStart(closeable: Closeable?) {
                     }
-                }
 
-                override fun onError(throwable: Throwable?) {
-                    println(throwable)
-                }
+                    override fun onNext(item: PushResponseItem?) {
+                        if (item != null) {
+                            if (item.id != id.load()) {
+                                print("\n")
+                                id.store(item.id ?: "")
+                            }
+                            item.progressDetail?.let {
+                                if(it.total!=null && it.current!=null) {
+                                    print("\r" + item.status + ": ${(it.current?.toFloat() ?: 0f) / (it.total?.toFloat() ?: Float.MAX_VALUE) * 100.0f}%")
+                                }
+                            }
 
-                override fun onComplete() {
-                }
+                            System.out.flush()
+                        }
+                    }
 
-                override fun close() {
-                }
+                    override fun onError(throwable: Throwable?) {
+                        println(throwable)
+                    }
 
-            })
+                    override fun onComplete() {
+                    }
+
+                    override fun close() {
+                    }
+
+                })
         }
         //executeCommand("docker", "push", pushedDockerTag)
 
